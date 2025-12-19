@@ -17,16 +17,16 @@ A modern TypeScript backend framework with zero-config autowiring, powered by Fa
 - 🔒 **Type-safe** - Full TypeScript support
 - 🪶 **Zero config** - Just decorate and run
 
-## 📦 Installation
+## Install in your project
 
 ```bash
-npm install
+npm install @riktajs/core
 ```
 
 ## 🚀 Quick Start
 
 ```typescript
-import { Rikta, Controller, Injectable, Get, Autowired } from '@rikta/core';
+import { Rikta, Controller, Injectable, Get, Autowired } from '@riktajs/core';
 
 @Injectable()
 class GreetingService {
