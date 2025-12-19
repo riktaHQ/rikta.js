@@ -1,16 +1,45 @@
-import { Injectable, Autowired } from '@riktajs/core';
+import { Injectable, Autowired, z } from '@riktajs/core';
 import { DatabaseService, Entity } from './database.service';
 import { Logger, LOGGER } from '../config/app.config';
+
+// ============================================================================
+// Zod Schemas with automatic type inference
+// ============================================================================
+
+/**
+ * Schema for creating a new user
+ * Validates: name (min 1 char), email (valid email format)
+ */
+export const CreateUserSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  email: z.string().email('Invalid email format'),
+});
+
+/**
+ * Schema for updating a user (all fields optional)
+ */
+export const UpdateUserSchema = CreateUserSchema.partial();
+
+/**
+ * Schema for pagination query parameters
+ */
+export const PaginationSchema = z.object({
+  limit: z.coerce.number().int().positive().max(100).optional(),
+  offset: z.coerce.number().int().min(0).optional(),
+});
+
+// ============================================================================
+// Types inferred from Zod schemas
+// ============================================================================
+
+export type CreateUserDto = z.infer<typeof CreateUserSchema>;
+export type UpdateUserDto = z.infer<typeof UpdateUserSchema>;
+export type PaginationQuery = z.infer<typeof PaginationSchema>;
 
 export interface User extends Entity {
   name: string;
   email: string;
   createdAt: string;
-}
-
-export interface CreateUserDto {
-  name: string;
-  email: string;
 }
 
 /**

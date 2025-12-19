@@ -53,6 +53,11 @@ export const HEADERS_METADATA = Symbol('headers:metadata');
 export const INJECT_METADATA = Symbol('inject:metadata');
 
 /**
+ * Key for storing Zod validation schema on parameters
+ */
+export const ZOD_SCHEMA_METADATA = Symbol('zod:schema:metadata');
+
+/**
  * Key for storing @Autowired() property injection metadata
  */
 export const AUTOWIRED_METADATA = Symbol('autowired:metadata');

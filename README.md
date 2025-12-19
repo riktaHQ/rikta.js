@@ -9,6 +9,7 @@ A modern TypeScript backend framework with zero-config autowiring, powered by Fa
 - 🔌 **Single DI decorator** - `@Autowired()` for everything
 - 🔄 **Hybrid Lifecycle** - Interface hooks + EventBus
 - 🛡️ **Exception Handling** - Built-in filters with standardized JSON responses
+- ✅ **Zod Validation** - Native type-safe validation with automatic type inference
 - ⚡ **Fastify under the hood** - Maximum performance
 - 🔒 **Type-safe** - Full TypeScript support
 - 🪶 **Zero config** - Just decorate and run
@@ -179,6 +180,129 @@ class UserController {
 **Available Exceptions:** `BadRequestException`, `UnauthorizedException`, `ForbiddenException`, `NotFoundException`, `ConflictException`, `UnprocessableEntityException`, `TooManyRequestsException`, `InternalServerErrorException`, `ServiceUnavailableException`, and more.
 
 See [Exception Handling Documentation](./src/core/exceptions/README.md) for full details.
+
+## ✅ Zod Validation
+
+Rikta has **native Zod integration** for type-safe request validation. Define schemas once and get both runtime validation and TypeScript type inference automatically.
+
+### Basic Usage
+
+```typescript
+import { Controller, Post, Body, Query, z } from '@riktajs/core';
+
+// Define your schema
+const CreateUserSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  email: z.string().email('Invalid email format'),
+  age: z.number().int().positive().optional(),
+});
+
+// Type is automatically inferred!
+type CreateUser = z.infer<typeof CreateUserSchema>;
+
+@Controller('/users')
+class UserController {
+  @Post()
+  create(@Body(CreateUserSchema) data: CreateUser) {
+    // data is fully typed as { name: string; email: string; age?: number }
+    // Validation happens automatically before this method is called
+    return { success: true, user: data };
+  }
+}
+```
+
+### Validation Error Response
+
+When validation fails, Rikta automatically returns a structured 400 response:
+
+```json
+{
+  "statusCode": 400,
+  "message": "Validation failed for body",
+  "error": "Validation Error",
+  "timestamp": "2024-01-15T10:30:00.000Z",
+  "path": "/users",
+  "details": {
+    "errors": [
+      { "path": ["email"], "message": "Invalid email format", "code": "invalid_string" },
+      { "path": ["name"], "message": "Name is required", "code": "too_small" }
+    ],
+    "errorCount": 2
+  }
+}
+```
+
+### All Decorators Support Zod
+
+```typescript
+import { z, Controller, Get, Post, Body, Query, Param, Headers } from '@riktajs/core';
+
+// Query validation with coercion
+const PaginationSchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().max(100).default(10),
+});
+
+// Route params validation
+const IdSchema = z.object({
+  id: z.string().uuid('Invalid UUID format'),
+});
+
+// Headers validation
+const AuthSchema = z.object({
+  authorization: z.string().startsWith('Bearer '),
+});
+
+@Controller('/items')
+class ItemController {
+  @Get()
+  list(@Query(PaginationSchema) query: z.infer<typeof PaginationSchema>) {
+    // query.page and query.limit are numbers (coerced from string)
+    return { page: query.page, limit: query.limit };
+  }
+
+  @Get('/:id')
+  findOne(
+    @Param(IdSchema) params: z.infer<typeof IdSchema>,
+    @Headers(AuthSchema) headers: z.infer<typeof AuthSchema>
+  ) {
+    return { id: params.id };
+  }
+}
+```
+
+### Zod Transformations
+
+Zod's transform feature works seamlessly:
+
+```typescript
+const DateSchema = z.object({
+  date: z.string().transform(val => new Date(val)),
+  tags: z.string().transform(val => val.split(',')),
+});
+
+@Post('/events')
+create(@Body(DateSchema) data: z.infer<typeof DateSchema>) {
+  // data.date is a Date object
+  // data.tags is string[]
+}
+```
+
+### Backward Compatibility
+
+Existing code without Zod schemas continues to work:
+
+```typescript
+// These still work as before
+@Get('/:id')
+findOne(@Param('id') id: string) { ... }
+
+@Post()
+create(@Body() data: unknown) { ... }
+
+@Get()
+list(@Query('page') page: string) { ... }
+```
 
 ## 📁 Project Structure
 

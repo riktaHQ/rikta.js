@@ -1,6 +1,9 @@
 // HTTP Exception
 export { HttpException, HttpExceptionBody, HttpExceptionResponse } from './http-exception';
 
+// Validation Exception (Zod)
+export { ValidationException, ValidationErrorDetails } from './validation.exception';
+
 // Specific Exceptions
 export {
   // 4xx Client Errors

@@ -8,12 +8,26 @@ import {
   Body, 
   Query,
   HttpCode,
-  Autowired 
+  Autowired,
+  NotFoundException,
 } from '@riktajs/core';
-import { UserService, User, CreateUserDto } from '../services/user.service';
+import { 
+  UserService, 
+  User, 
+  CreateUserSchema, 
+  UpdateUserSchema,
+  PaginationSchema,
+  CreateUserDto,
+  UpdateUserDto,
+  PaginationQuery,
+} from '../services/user.service';
 
 /**
  * User REST API Controller
+ * 
+ * Demonstrates Zod validation with automatic type inference.
+ * All request bodies and query parameters are validated before
+ * reaching the handler methods.
  */
 @Controller('/users')
 export class UserController {
@@ -23,17 +37,18 @@ export class UserController {
 
   /**
    * GET /users
-   * Get all users with optional limit
+   * Get all users with optional pagination
+   * 
+   * Query params are validated and coerced to numbers automatically
    */
   @Get()
-  findAll(@Query('limit') limit?: string): User[] {
+  findAll(@Query(PaginationSchema) query: PaginationQuery): User[] {
     const users = this.userService.findAll();
     
-    if (limit) {
-      return users.slice(0, parseInt(limit, 10));
-    }
+    const offset = query.offset ?? 0;
+    const limit = query.limit ?? users.length;
     
-    return users;
+    return users.slice(offset, offset + limit);
   }
 
   /**
@@ -41,11 +56,11 @@ export class UserController {
    * Get user by ID
    */
   @Get('/:id')
-  findOne(@Param('id') id: string): User | { error: string; statusCode: number } {
+  findOne(@Param('id') id: string): User {
     const user = this.userService.findById(id);
     
     if (!user) {
-      return { error: 'User not found', statusCode: 404 };
+      throw new NotFoundException(`User ${id} not found`);
     }
     
     return user;
@@ -54,26 +69,35 @@ export class UserController {
   /**
    * POST /users
    * Create a new user
+   * 
+   * Body is validated against CreateUserSchema:
+   * - name: required, min 1 character
+   * - email: required, valid email format
+   * 
+   * Type is automatically inferred as { name: string; email: string }
    */
   @Post()
   @HttpCode(201)
-  create(@Body() data: CreateUserDto): User {
+  create(@Body(CreateUserSchema) data: CreateUserDto): User {
     return this.userService.create(data);
   }
 
   /**
    * PUT /users/:id
    * Update a user
+   * 
+   * Body is validated against UpdateUserSchema (partial of CreateUserSchema)
+   * All fields are optional for partial updates
    */
   @Put('/:id')
   update(
     @Param('id') id: string, 
-    @Body() data: Partial<CreateUserDto>
-  ): User | { error: string; statusCode: number } {
+    @Body(UpdateUserSchema) data: UpdateUserDto
+  ): User {
     const user = this.userService.update(id, data);
     
     if (!user) {
-      return { error: 'User not found', statusCode: 404 };
+      throw new NotFoundException(`User ${id} not found`);
     }
     
     return user;
@@ -84,11 +108,11 @@ export class UserController {
    * Delete a user
    */
   @Delete('/:id')
-  delete(@Param('id') id: string): { success: boolean } | { error: string; statusCode: number } {
+  delete(@Param('id') id: string): { success: boolean } {
     const success = this.userService.delete(id);
     
     if (!success) {
-      return { error: 'User not found', statusCode: 404 };
+      throw new NotFoundException(`User ${id} not found`);
     }
     
     return { success: true };

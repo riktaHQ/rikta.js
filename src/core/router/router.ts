@@ -10,6 +10,7 @@ import {
 } from '../constants';
 import { Constructor, RouteDefinition, RouteContext } from '../types';
 import { ParamMetadata } from '../decorators/param.decorator';
+import { ValidationException } from '../exceptions/validation.exception';
 
 /**
  * Router class
@@ -153,29 +154,36 @@ export class Router {
   }
 
   /**
-   * Resolve a single parameter
+   * Resolve a single parameter with optional Zod validation
    */
   private resolveParam(param: ParamMetadata, context: RouteContext): unknown {
+    // Get raw value based on parameter type
+    let rawValue: unknown;
+    
     switch (param.type) {
       case ParamType.BODY:
-        return param.key 
+        rawValue = param.key 
           ? (context.body as Record<string, unknown>)?.[param.key]
           : context.body;
+        break;
       
       case ParamType.QUERY:
-        return param.key 
+        rawValue = param.key 
           ? context.query[param.key]
           : context.query;
+        break;
       
       case ParamType.PARAM:
-        return param.key 
+        rawValue = param.key 
           ? context.params[param.key]
           : context.params;
+        break;
       
       case ParamType.HEADERS:
-        return param.key 
+        rawValue = param.key 
           ? context.request.headers[param.key.toLowerCase()]
           : context.request.headers;
+        break;
       
       case ParamType.REQUEST:
         return context.request;
@@ -189,6 +197,25 @@ export class Router {
       default:
         return undefined;
     }
+
+    // If a Zod schema is provided, validate the raw value
+    if (param.zodSchema) {
+      const result = param.zodSchema.safeParse(rawValue);
+      
+      if (!result.success) {
+        // Throw ValidationException with Zod error details
+        throw new ValidationException(
+          result.error,
+          `Validation failed for ${param.type}${param.key ? ` (${param.key})` : ''}`
+        );
+      }
+      
+      // Return the validated and transformed data
+      return result.data;
+    }
+
+    // No schema provided, return raw value (backward compatible)
+    return rawValue;
   }
 }
 
