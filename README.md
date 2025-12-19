@@ -43,7 +43,7 @@ export class AppController {
 }
 
 // No modules - just create and run!
-const app = await Rikta.create({ port: 3000 });
+const app = await Rikta.create({ port: 3000, autowired: [__dirname] });
 await app.listen();
 ```
 
@@ -75,7 +75,7 @@ const app = await Rikta.create({
   prefix: '/api/v1',    // Global prefix
   
   // Auto-discovery paths (default: ['./**'] - scans all files)
-  autowired: ['./src/controllers', './src/services'],
+  autowired: [path.resolve('./src/controllers'), path.resolve('./src/services')],
   
   // Optional: explicit controller list (skips auto-discovery)
   controllers: [UserController, AppController],
@@ -98,16 +98,11 @@ Rikta automatically scans and imports files to discover `@Controller` and `@Inje
 ```typescript
 // Scan specific directories
 await Rikta.create({ 
-  autowired: ['./src/controllers', './src/services'] 
-});
-
-// Scan with glob patterns
-await Rikta.create({ 
-  autowired: ['./src/**/*.controller.ts', './src/**/*.service.ts'] 
+  autowired: [path.resolve('./src/controllers')] 
 });
 
 // Default: scans current directory recursively
-await Rikta.create({ port: 3000 });
+await Rikta.create({ port: 3000, autowired: [path.resolve('.')] });
 ```
 
 ## 🔄 Lifecycle Hooks

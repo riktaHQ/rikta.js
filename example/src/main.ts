@@ -11,13 +11,12 @@
  */
 
 import { Rikta } from '@riktajs/core';
-import path from "node:path";
 
 async function bootstrap() {
   // Create the application with auto-discovery
   // All @Controller, @Injectable, and @Provider classes are found automatically!
   const app = await Rikta.create({
-    autowired: [path.resolve('.')],
+    autowired: [__dirname],
     port: 3000,
     logger: false,
   });
