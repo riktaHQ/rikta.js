@@ -288,12 +288,11 @@ create(@Body(DateSchema) data: z.infer<typeof DateSchema>) {
 }
 ```
 
-### Backward Compatibility
+### With non-Zod Validation
 
-Existing code without Zod schemas continues to work:
+You can also use Rikta without Zod by omitting the schema parameter:
 
 ```typescript
-// These still work as before
 @Get('/:id')
 findOne(@Param('id') id: string) { ... }
 
