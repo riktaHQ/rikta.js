@@ -1,0 +1,44 @@
+{
+  "name": "@rikta/core",
+  "version": "0.1.0",
+  "description": "A modern TypeScript backend framework with zero-config autowiring, powered by Fastify",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node-dev --respawn src/index.ts",
+    "example": "ts-node example/main.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src --ext .ts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "framework",
+    "backend",
+    "typescript",
+    "fastify",
+    "decorators",
+    "dependency-injection",
+    "nestjs-like"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "fast-glob": "^3.3.2",
+    "fastify": "^5.1.0",
+    "reflect-metadata": "^0.2.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@vitest/coverage-v8": "^2.1.9",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
