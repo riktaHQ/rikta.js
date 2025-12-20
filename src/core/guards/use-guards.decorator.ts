@@ -77,7 +77,7 @@ export function UseGuards(...guards: GuardClass[]): ClassDecorator & MethodDecor
   return (
     target: object,
     propertyKey?: string | symbol,
-    descriptor?: PropertyDescriptor
+    // descriptor?: PropertyDescriptor
   ): void => {
     if (propertyKey !== undefined) {
       // Method decorator - store on the method
