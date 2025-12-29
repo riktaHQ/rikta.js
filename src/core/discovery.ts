@@ -9,6 +9,7 @@ const DEFAULT_IGNORE_PATTERNS = [
   '**/node_modules/**',
   '**/dist/**',
   '**/build/**',
+  '**/benchmarks/**',
   '**/*.test.ts',
   '**/*.spec.ts',
   '**/*.d.ts',

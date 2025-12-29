@@ -101,6 +101,40 @@ Everything you need to build production-ready APIs.
 | [**Validation**](./docs/guide/validation.md) | **New!** Type-safe validation with Zod. |
 | [**Lifecycle**](./docs/guide/lifecycle.md) | Hooks (`OnProviderInit`) and the Event Bus. |
 | [**Error Handling**](./docs/guide/error-handling.md) | Exception filters and standard JSON responses. |
+| [**Benchmarks**](./benchmarks/README.md) | Performance comparison with Fastify & NestJS. |
+
+---
+
+## ⚡ Performance
+
+Rikta is built on Fastify and delivers **excellent performance**. From our [benchmarks](./benchmarks/README.md):
+
+| Metric | Rikta vs NestJS | Result |
+|--------|-----------------|--------|
+| **Startup** | 🟢 **-37.7%** | Rikta is faster |
+| **GET requests** | 🟢 **-44.3%** | Rikta is faster |
+| **POST requests** | 🟢 **-14.8%** | Rikta is faster |
+| **Param requests** | 🟢 **-36.7%** | Rikta is faster |
+| **Average** | 🟢 **-32.0%** | Rikta is faster |
+
+For detailed tests:
+```bash
+cd benchmarks
+npm install
+npm run bench
+```
+
+### Production Mode
+
+For maximum performance, use silent mode:
+
+```typescript
+const app = await Rikta.create({
+  port: 3000,
+  silent: true,   // Disable all console output
+  logger: false   // Disable Fastify logging
+});
+```
 
 ---
 

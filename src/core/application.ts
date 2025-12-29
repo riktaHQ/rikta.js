@@ -45,16 +45,19 @@ export class RiktaFactory {
    * ```
    */
   static async create(config: RiktaConfig = {}): Promise<RiktaApplication> {
-    console.log('\n🚀 Rikta Framework Starting...\n');
+    const silent = config.silent ?? false;
+    if (!silent) console.log('\n🚀 Rikta Framework Starting...\n');
     const callerDir = getCallerDirectory();
     let discoveredFiles: string[] = [];
     
     // Auto-discovery: scan for controllers and services
-    if (!config.controllers) {
-      const patterns = config.autowired?.length ? config.autowired : ['./**'];
-      console.log('\n🔍 Auto-discovering modules...');
+    if (!config.controllers && config.autowired !== false) {
+      const patterns = Array.isArray(config.autowired) && config.autowired.length > 0 
+        ? config.autowired 
+        : ['./**'];
+      if (!silent) console.log('\n🔍 Auto-discovering modules...');
       discoveredFiles = await discoverModules(patterns, callerDir);
-      if (discoveredFiles.length > 0) {
+      if (discoveredFiles.length > 0 && !silent) {
         console.log(`   Found ${discoveredFiles.length} module(s)`);
       }
     }
@@ -71,7 +74,7 @@ export class RiktaFactory {
 class RiktaApplicationImpl implements RiktaApplication {
   readonly server: FastifyInstance;
   private readonly container: Container;
-  private readonly config: Required<Omit<RiktaConfig, 'controllers' | 'providers' | 'autowired' | 'exceptionFilter' | 'exceptionFilters'>> & Pick<RiktaConfig, 'controllers' | 'providers' | 'exceptionFilter' | 'exceptionFilters'>;
+  private readonly config: Required<Omit<RiktaConfig, 'controllers' | 'providers' | 'autowired' | 'exceptionFilter' | 'exceptionFilters'>> & Pick<RiktaConfig, 'controllers' | 'providers' | 'exceptionFilter' | 'exceptionFilters'> & { silent: boolean };
   private readonly router: Router;
   private readonly events: EventBus;
   private readonly initializedProviders: Array<{ instance: unknown; priority: number; name: string }> = [];
@@ -81,11 +84,14 @@ class RiktaApplicationImpl implements RiktaApplication {
   private address = '';
 
   constructor(config: RiktaConfig) {
+    const silent = config.silent ?? false;
     this.config = {
       port: config.port ?? DEFAULT_CONFIG.port,
       host: config.host ?? DEFAULT_CONFIG.host,
-      logger: config.logger ?? DEFAULT_CONFIG.logger,
+      // If silent mode, disable logger unless explicitly set
+      logger: config.logger ?? (silent ? false : DEFAULT_CONFIG.logger),
       prefix: config.prefix ?? DEFAULT_CONFIG.prefix,
+      silent: silent,
       controllers: config.controllers,
       providers: config.providers,
       exceptionFilter: config.exceptionFilter,
@@ -136,14 +142,14 @@ class RiktaApplicationImpl implements RiktaApplication {
       createExceptionHandler(globalFilter, this.customExceptionFilters)
     );
     
-    console.log('🛡️  Exception handler configured');
+    if (!this.config.silent) console.log('🛡️  Exception handler configured');
   }
 
   /**
    * Initialize the application
    */
   async init(discoveredFiles: string[] = []): Promise<void> {
-    console.log('\n🔧 Rikta Framework Initializing...\n');
+    if (!this.config.silent) console.log('\n🔧 Rikta Framework Initializing...\n');
 
     // Emit discovery event
     await this.events.emit('app:discovery', { files: discoveredFiles });
@@ -170,9 +176,9 @@ class RiktaApplicationImpl implements RiktaApplication {
 
     // 5. Register routes
     const controllers = this.config.controllers ?? registry.getControllers();
-    console.log('📡 Registering routes:');
+    if (!this.config.silent) console.log('📡 Registering routes:');
     for (const controller of controllers) {
-      this.router.registerController(controller);
+      this.router.registerController(controller, this.config.silent);
     }
     await this.events.emit('app:routes', { count: controllers.length });
 
@@ -182,7 +188,7 @@ class RiktaApplicationImpl implements RiktaApplication {
       providerCount: this.initializedProviders.length 
     });
 
-    console.log('\n✅ Application initialized successfully\n');
+    if (!this.config.silent) console.log('\n✅ Application initialized successfully\n');
   }
 
   /**
@@ -315,7 +321,7 @@ class RiktaApplicationImpl implements RiktaApplication {
     });
 
     this.isListening = true;
-    console.log(`🚀 Server listening on ${this.address}\n`);
+    if (!this.config.silent) console.log(`🚀 Server listening on ${this.address}\n`);
 
     // Call onApplicationListen hooks
     for (const { instance } of this.initializedProviders) {
@@ -364,7 +370,7 @@ class RiktaApplicationImpl implements RiktaApplication {
       uptime: Date.now() - this.startTime 
     });
 
-    console.log('\n👋 Application closed\n');
+    if (!this.config.silent) console.log('\n👋 Application closed\n');
   }
 
   /**

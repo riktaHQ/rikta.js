@@ -15,7 +15,11 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "lint": "eslint src --ext .ts",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "bench": "cd benchmarks && npm install && npm run bench",
+    "bench:startup": "cd benchmarks && npm install && npm run bench:startup",
+    "bench:requests": "cd benchmarks && npm install && npm run bench:requests",
+    "bench:autocannon": "cd benchmarks && npm install && npm run bench:autocannon"
   },
   "keywords": [
     "framework",

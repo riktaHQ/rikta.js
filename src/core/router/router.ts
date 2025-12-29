@@ -17,14 +17,43 @@ import { getGuardsMetadata, GuardClass } from '../guards/use-guards.decorator';
 import type { CanActivate } from '../guards/can-activate.interface';
 
 /**
+ * Compiled parameter extractor function type
+ * Pre-compiled for maximum performance
+ */
+type ParamExtractor = (context: RouteContext) => unknown;
+
+/**
+ * Compiled route handler type
+ */
+type CompiledHandler = (request: FastifyRequest, reply: FastifyReply) => Promise<unknown>;
+
+/**
+ * Pre-compiled parameter resolver
+ */
+interface CompiledParamResolver {
+  index: number;
+  extract: ParamExtractor;
+  zodSchema?: ParamMetadata['zodSchema'];
+  validationLabel: string;
+}
+
+/**
  * Router class
  * 
  * Responsible for:
  * - Scanning controllers for route metadata
  * - Registering routes with Fastify
  * - Handling parameter injection
+ * 
+ * Performance optimizations:
+ * - Pre-compiled parameter extractors
+ * - Guard instance caching
+ * - Fast path for simple routes
  */
 export class Router {
+  /** Cache for guard instances (singleton per guard class) */
+  private readonly guardCache = new Map<GuardClass, CanActivate>();
+  
   constructor(
     private readonly server: FastifyInstance,
     private readonly container: Container,
@@ -34,7 +63,7 @@ export class Router {
   /**
    * Register all routes from a controller
    */
-  registerController(controllerClass: Constructor): void {
+  registerController(controllerClass: Constructor, silent: boolean = false): void {
     // Get controller metadata
     const controllerMeta = Reflect.getMetadata(CONTROLLER_METADATA, controllerClass);
     if (!controllerMeta) {
@@ -53,7 +82,7 @@ export class Router {
 
     // Register each route
     for (const route of routes) {
-      this.registerRoute(controllerClass, controllerInstance, controllerMeta.prefix, route);
+      this.registerRoute(controllerClass, controllerInstance, controllerMeta.prefix, route, silent);
     }
   }
 
@@ -64,7 +93,8 @@ export class Router {
     controllerClass: Constructor,
     controllerInstance: unknown,
     controllerPrefix: string,
-    route: RouteDefinition
+    route: RouteDefinition,
+    silent: boolean = false
   ): void {
     // Build full path
     const fullPath = this.buildPath(controllerPrefix, route.path);
@@ -87,48 +117,226 @@ export class Router {
     // Get guards for this route (controller-level + method-level)
     const guards = getGuardsMetadata(controllerClass, route.handlerName);
 
-    // Create the route handler
-    const routeHandler = async (request: FastifyRequest, reply: FastifyReply) => {
-      try {
-        // Execute guards before handler
-        if (guards.length > 0) {
-          await this.executeGuards(guards, request, reply, controllerClass, route.handlerName);
-        }
+    // ============================================
+    // OPTIMIZATION: Pre-compile parameter resolvers
+    // ============================================
+    const compiledResolvers = this.compileParamResolvers(paramsMeta);
+    const hasParams = compiledResolvers.length > 0;
+    const maxParamIndex = hasParams ? Math.max(...compiledResolvers.map(r => r.index)) : -1;
 
-        // Build route context
-        const context: RouteContext = {
-          request,
-          reply,
-          params: request.params as Record<string, string>,
-          query: request.query as Record<string, unknown>,
-          body: request.body,
-        };
+    // ============================================
+    // OPTIMIZATION: Pre-resolve guard instances
+    // ============================================
+    const guardInstances = this.resolveGuardInstances(guards);
+    const hasGuards = guardInstances.length > 0;
 
-        // Resolve parameters
-        const args = this.resolveParams(paramsMeta, context);
+    // ============================================
+    // OPTIMIZATION: Create specialized handlers
+    // ============================================
+    let routeHandler: CompiledHandler;
 
-        // Call the handler
-        const result = await handler.apply(controllerInstance, args);
-
-        // Set status code if specified
-        if (statusCode) {
-          reply.status(statusCode);
-        }
-
-        // Return result (Fastify will serialize it)
+    if (!hasGuards && !hasParams && !statusCode) {
+      // FAST PATH: No guards, no params, no custom status
+      routeHandler = async (_request, _reply) => {
+        return handler.call(controllerInstance);
+      };
+    } else if (!hasGuards && !hasParams) {
+      // Fast path: Just status code
+      routeHandler = async (_request, reply) => {
+        const result = await handler.call(controllerInstance);
+        if (statusCode) reply.status(statusCode);
         return result;
-      } catch (error) {
-        // Let Fastify handle the error
-        throw error;
-      }
-    };
+      };
+    } else if (!hasGuards) {
+      // Medium path: Params but no guards
+      routeHandler = async (request, reply) => {
+        const args = this.resolveParamsOptimized(compiledResolvers, maxParamIndex, request, reply);
+        const result = await handler.apply(controllerInstance, args);
+        if (statusCode) reply.status(statusCode);
+        return result;
+      };
+    } else {
+      // Full path: Guards + params
+      // Pre-create execution context factory for this route
+      const createContext = (req: FastifyRequest, rep: FastifyReply) => 
+        new ExecutionContextImpl(req, rep, controllerClass, route.handlerName);
+
+      routeHandler = async (request, reply) => {
+        // Execute guards with cached instances
+        await this.executeGuardsOptimized(guardInstances, createContext(request, reply));
+        
+        // Resolve params if needed
+        const args = hasParams 
+          ? this.resolveParamsOptimized(compiledResolvers, maxParamIndex, request, reply)
+          : [];
+        
+        const result = await handler.apply(controllerInstance, args);
+        if (statusCode) reply.status(statusCode);
+        return result;
+      };
+    }
 
     // Register with Fastify
     const method = route.method.toLowerCase() as 'get' | 'post' | 'put' | 'delete' | 'patch' | 'options' | 'head';
     this.server[method](fullPath, routeHandler);
 
     // Log route registration
-    console.log(`  → ${route.method.padEnd(7)} ${fullPath}`);
+    if (!silent) console.log(`  → ${route.method.padEnd(7)} ${fullPath}`);
+  }
+
+  /**
+   * OPTIMIZATION: Compile parameter resolvers at route registration time
+   * Each resolver is a pre-built extractor function
+   */
+  private compileParamResolvers(paramsMeta: ParamMetadata[]): CompiledParamResolver[] {
+    if (paramsMeta.length === 0) return [];
+
+    return paramsMeta.map(param => {
+      const extractor = this.createParamExtractor(param);
+      return {
+        index: param.index,
+        extract: extractor,
+        zodSchema: param.zodSchema,
+        validationLabel: `${param.type}${param.key ? ` (${param.key})` : ''}`
+      };
+    });
+  }
+
+  /**
+   * OPTIMIZATION: Create a specialized extractor function for each param type
+   * This avoids switch statements at runtime
+   */
+  private createParamExtractor(param: ParamMetadata): ParamExtractor {
+    const key = param.key;
+
+    switch (param.type) {
+      case ParamType.BODY:
+        return key
+          ? (ctx) => (ctx.body as Record<string, unknown>)?.[key]
+          : (ctx) => ctx.body;
+      
+      case ParamType.QUERY:
+        return key
+          ? (ctx) => ctx.query[key]
+          : (ctx) => ctx.query;
+      
+      case ParamType.PARAM:
+        return key
+          ? (ctx) => ctx.params[key]
+          : (ctx) => ctx.params;
+      
+      case ParamType.HEADERS:
+        const headerKey = key?.toLowerCase();
+        return headerKey
+          ? (ctx) => ctx.request.headers[headerKey]
+          : (ctx) => ctx.request.headers;
+      
+      case ParamType.REQUEST:
+        return (ctx) => ctx.request;
+      
+      case ParamType.REPLY:
+        return (ctx) => ctx.reply;
+      
+      case ParamType.CONTEXT:
+        return (ctx) => ctx;
+      
+      default:
+        return () => undefined;
+    }
+  }
+
+  /**
+   * OPTIMIZATION: Resolve params using pre-compiled extractors
+   */
+  private resolveParamsOptimized(
+    resolvers: CompiledParamResolver[],
+    maxIndex: number,
+    request: FastifyRequest,
+    reply: FastifyReply
+  ): unknown[] {
+    // Build context once
+    const context: RouteContext = {
+      request,
+      reply,
+      params: request.params as Record<string, string>,
+      query: request.query as Record<string, unknown>,
+      body: request.body,
+    };
+
+    // Pre-allocate array
+    const args = new Array(maxIndex + 1);
+
+    for (let i = 0; i < resolvers.length; i++) {
+      const resolver = resolvers[i];
+      let value = resolver.extract(context);
+
+      // Validate if schema present
+      if (resolver.zodSchema) {
+        const result = resolver.zodSchema.safeParse(value);
+        if (!result.success) {
+          throw new ValidationException(
+            result.error,
+            `Validation failed for ${resolver.validationLabel}`
+          );
+        }
+        value = result.data;
+      }
+
+      args[resolver.index] = value;
+    }
+
+    return args;
+  }
+
+  /**
+   * OPTIMIZATION: Pre-resolve guard instances at route registration
+   */
+  private resolveGuardInstances(guards: GuardClass[]): CanActivate[] {
+    return guards.map(GuardClass => {
+      // Check cache first
+      let instance = this.guardCache.get(GuardClass);
+      if (instance) return instance;
+
+      // Resolve from container
+      try {
+        instance = this.container.resolve(GuardClass) as CanActivate;
+      } catch (error) {
+        throw new Error(
+          `Failed to resolve guard ${GuardClass.name}. ` +
+          `Make sure it is decorated with @Injectable(). ` +
+          `Original error: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+
+      // Verify interface
+      if (typeof instance.canActivate !== 'function') {
+        throw new Error(
+          `${GuardClass.name} does not implement CanActivate interface. ` +
+          `The guard must have a canActivate(context: ExecutionContext) method.`
+        );
+      }
+
+      // Cache for future use
+      this.guardCache.set(GuardClass, instance);
+      return instance;
+    });
+  }
+
+  /**
+   * OPTIMIZATION: Execute guards using pre-resolved instances
+   */
+  private async executeGuardsOptimized(
+    guardInstances: CanActivate[],
+    context: ExecutionContextImpl
+  ): Promise<void> {
+    for (let i = 0; i < guardInstances.length; i++) {
+      const result = await guardInstances[i].canActivate(context);
+      if (result !== true) {
+        throw new ForbiddenException(
+          `Access denied by guard`
+        );
+      }
+    }
   }
 
   /**
@@ -141,149 +349,6 @@ export class Router {
     
     // Normalize multiple slashes
     return parts.replace(/\/+/g, '/') || '/';
-  }
-
-  /**
-   * Resolve handler parameters based on metadata
-   */
-  private resolveParams(paramsMeta: ParamMetadata[], context: RouteContext): unknown[] {
-    if (paramsMeta.length === 0) {
-      return [];
-    }
-
-    // Sort by parameter index
-    const sorted = [...paramsMeta].sort((a, b) => a.index - b.index);
-    
-    // Find max index to create properly sized array
-    const maxIndex = Math.max(...sorted.map(p => p.index));
-    const args: unknown[] = new Array(maxIndex + 1).fill(undefined);
-
-    for (const param of sorted) {
-      args[param.index] = this.resolveParam(param, context);
-    }
-
-    return args;
-  }
-
-  /**
-   * Resolve a single parameter with optional Zod validation
-   */
-  private resolveParam(param: ParamMetadata, context: RouteContext): unknown {
-    // Get raw value based on parameter type
-    let rawValue: unknown;
-    
-    switch (param.type) {
-      case ParamType.BODY:
-        rawValue = param.key 
-          ? (context.body as Record<string, unknown>)?.[param.key]
-          : context.body;
-        break;
-      
-      case ParamType.QUERY:
-        rawValue = param.key 
-          ? context.query[param.key]
-          : context.query;
-        break;
-      
-      case ParamType.PARAM:
-        rawValue = param.key 
-          ? context.params[param.key]
-          : context.params;
-        break;
-      
-      case ParamType.HEADERS:
-        rawValue = param.key 
-          ? context.request.headers[param.key.toLowerCase()]
-          : context.request.headers;
-        break;
-      
-      case ParamType.REQUEST:
-        return context.request;
-      
-      case ParamType.REPLY:
-        return context.reply;
-      
-      case ParamType.CONTEXT:
-        return context;
-      
-      default:
-        return undefined;
-    }
-
-    // If a Zod schema is provided, validate the raw value
-    if (param.zodSchema) {
-      const result = param.zodSchema.safeParse(rawValue);
-      
-      if (!result.success) {
-        // Throw ValidationException with Zod error details
-        throw new ValidationException(
-          result.error,
-          `Validation failed for ${param.type}${param.key ? ` (${param.key})` : ''}`
-        );
-      }
-      
-      // Return the validated and transformed data
-      return result.data;
-    }
-
-    // No schema provided, return raw value (backward compatible)
-    return rawValue;
-  }
-
-  /**
-   * Execute guards for a route
-   * Guards are executed in order (controller-level first, then method-level)
-   * All guards must pass (AND logic)
-   * 
-   * @throws ForbiddenException if any guard returns false
-   */
-  private async executeGuards(
-    guards: GuardClass[],
-    request: FastifyRequest,
-    reply: FastifyReply,
-    controllerClass: Constructor,
-    handlerName: string | symbol
-  ): Promise<void> {
-    // Create execution context
-    const context = new ExecutionContextImpl(
-      request,
-      reply,
-      controllerClass,
-      handlerName
-    );
-
-    // Execute each guard sequentially
-    for (const GuardClass of guards) {
-      // Resolve guard instance from DI container
-      let guardInstance: CanActivate;
-      try {
-        guardInstance = this.container.resolve(GuardClass) as CanActivate;
-      } catch (error) {
-        throw new Error(
-          `Failed to resolve guard ${GuardClass.name}. ` +
-          `Make sure it is decorated with @Injectable(). ` +
-          `Original error: ${error instanceof Error ? error.message : String(error)}`
-        );
-      }
-
-      // Verify the guard has canActivate method
-      if (typeof guardInstance.canActivate !== 'function') {
-        throw new Error(
-          `${GuardClass.name} does not implement CanActivate interface. ` +
-          `The guard must have a canActivate(context: ExecutionContext) method.`
-        );
-      }
-
-      // Execute the guard
-      const result = await guardInstance.canActivate(context);
-
-      // If guard returns false, deny access
-      if (result !== true) {
-        throw new ForbiddenException(
-          `Access denied by ${GuardClass.name}`
-        );
-      }
-    }
   }
 }
 

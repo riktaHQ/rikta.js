@@ -52,7 +52,6 @@ export function Controller(prefixOrOptions?: string | ControllerOptions): ClassD
     Reflect.defineMetadata(INJECTABLE_METADATA, { scope: 'singleton' }, target);
     
     // Register in DI container
-    console.log(`� Controller registered: ${target.name} (prefix: '${normalizedPrefix}')`);
     container.register(target as new (...args: unknown[]) => unknown, { scope: 'singleton' });
     
     // Auto-register in global registry for discovery

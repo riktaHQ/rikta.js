@@ -17,6 +17,11 @@ Core concepts and features of the framework.
 - [Validation](./guide/validation.md) - Type-safe validation with Zod
 - [Lifecycle](./guide/lifecycle.md) - Hooks and events
 - [Error Handling](./guide/error-handling.md) - Exceptions and filters
+- [Guards](./guide/guards.md) - Route guards and authorization
+
+## ⚡ Performance
+
+- [Optimization Guide](./OPTIMIZATION.md) - Performance optimizations and benchmarks
 
 ## 🔧 API Reference
 

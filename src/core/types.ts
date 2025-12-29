@@ -99,6 +99,9 @@ export interface RiktaConfig {
   /** Enable Fastify logging (default: true) */
   logger?: boolean | object;
   
+  /** Disable all framework console output (default: false) */
+  silent?: boolean;
+  
   /** Global route prefix (default: '') */
   prefix?: string;
   
@@ -117,7 +120,7 @@ export interface RiktaConfig {
    * autowired: ['./src/**\/*.controller.ts', './src/**\/*.service.ts']
    * ```
    */
-  autowired?: string[];
+  autowired?: string[] | false;
   
   /**
    * Explicit list of controllers to register.
