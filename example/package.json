@@ -2,14 +2,14 @@
   "name": "rikta-example",
   "version": "0.1.0",
   "description": "example project for riktajs/core",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "main.js",
+  "types": "main.d.ts",
   "files": [
     "dist"
   ],
   "scripts": {
     "build": "tsc",
-    "dev": "ts-node-dev --respawn main.ts"
+    "dev": "ts-node-dev --respawn src/main.ts"
   },
   "keywords": [
     "framework",
@@ -23,7 +23,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@riktajs/core": "0.3.0"
+    "@riktajs/core": "0.3.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

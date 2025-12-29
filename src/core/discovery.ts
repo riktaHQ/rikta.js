@@ -41,11 +41,17 @@ function getEntryPointDirectory(): string {
 
 /**
  * Regex patterns to detect Rikta decorators
+ * Supports both TypeScript source and compiled JavaScript patterns
  */
 const DECORATOR_PATTERNS = [
+  // TypeScript source patterns
   /@Controller\s*\(/,    // @Controller() or @Controller('/path')
   /@Injectable\s*\(/,    // @Injectable() or @Injectable({ scope: 'singleton' })
   /@Provider\s*\(/,      // @Provider(TOKEN)
+  // Compiled JavaScript patterns (e.g., (0, core_1.Controller)('/path'))
+  /\.\s*Controller\s*\)\s*\(/,
+  /\.\s*Injectable\s*\)\s*\(/,
+  /\.\s*Provider\s*\)\s*\(/,
 ];
 
 /**
