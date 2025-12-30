@@ -63,10 +63,6 @@ export class DatabaseConfigProvider extends AbstractConfigProvider {
     this.populate();
   }
 
-  provide() {
-    return this;
-  }
-
   /**
    * Get full database connection string
    */

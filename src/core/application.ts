@@ -55,11 +55,7 @@ export class RiktaFactory {
       const patterns = Array.isArray(config.autowired) && config.autowired.length > 0 
         ? config.autowired 
         : ['./**'];
-      if (!silent) console.log('\n🔍 Auto-discovering modules...');
       discoveredFiles = await discoverModules(patterns, callerDir);
-      if (discoveredFiles.length > 0 && !silent) {
-        console.log(`   Found ${discoveredFiles.length} module(s)`);
-      }
     }
     
     const app = new RiktaApplicationImpl(config);
@@ -143,16 +139,12 @@ class RiktaApplicationImpl implements RiktaApplication {
     this.server.setErrorHandler(
       createExceptionHandler(globalFilter, this.customExceptionFilters)
     );
-    
-    if (!this.config.silent) console.log('🛡️  Exception handler configured');
   }
 
   /**
    * Initialize the application
    */
   async init(discoveredFiles: string[] = []): Promise<void> {
-    if (!this.config.silent) console.log('\n🔧 Rikta Framework Initializing...\n');
-
     // Emit discovery event
     await this.events.emit('app:discovery', { files: discoveredFiles });
 
@@ -193,7 +185,7 @@ class RiktaApplicationImpl implements RiktaApplication {
       providerCount: this.initializedProviders.length 
     });
 
-    if (!this.config.silent) console.log('\n✅ Application initialized successfully\n');
+    if (!this.config.silent) console.log('\n✅ Rikta is ready\n');
   }
 
   /**
@@ -343,7 +335,6 @@ class RiktaApplicationImpl implements RiktaApplication {
     });
 
     this.isListening = true;
-    if (!this.config.silent) console.log(`🚀 Server listening on ${this.address}\n`);
 
     // Call onApplicationListen hooks
     for (const { instance } of this.initializedProviders) {
@@ -409,11 +400,8 @@ class RiktaApplicationImpl implements RiktaApplication {
     return this.events;
   }
 
-  /**
-   * Get a service from the container
-   */
-  get<T>(token: Constructor<T>): T {
-    return this.container.resolve(token);
+  getContainer(): Container {
+    return this.container;
   }
 }
 

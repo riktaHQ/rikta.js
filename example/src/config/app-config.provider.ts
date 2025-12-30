@@ -112,10 +112,6 @@ export class AppConfigProvider extends AbstractConfigProvider {
     this.populate();
   }
 
-  provide() {
-    return this;
-  }
-
   /**
    * Helper method to get the database connection URL
    */

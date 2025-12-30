@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import {Container} from "@rikta/core/container";
 
 // ============================================================================
 // Core Types
@@ -195,4 +196,5 @@ export interface RiktaApplication {
   listen(): Promise<string>;
   close(): Promise<void>;
   getUrl(): string;
+  getContainer(): Container
 }

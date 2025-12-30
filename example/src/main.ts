@@ -11,6 +11,7 @@
  */
 
 import { Rikta } from '@riktajs/core';
+import {APP_CONFIG} from "./config/app.config";
 
 async function bootstrap() {
   // Create the application with auto-discovery
@@ -20,9 +21,11 @@ async function bootstrap() {
     logger: false,
   });
 
-  console.log('🚀 Rikta Example App Starting...');
+  const container = app.getContainer();
+  const config = container.resolve(APP_CONFIG)
 
   await app.listen();
+  console.log('🚀 Rikta Example App Starting...', config.name);
 }
 
 bootstrap().catch(console.error);

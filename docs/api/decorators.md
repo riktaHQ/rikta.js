@@ -111,6 +111,21 @@ export class AppConfigProvider extends AbstractConfigProvider {
     this.populate();
   }
 }
+
+// Use config providers via Dependency Injection
+@Injectable()
+export class ApiService {
+  @Autowired(APP_CONFIG)
+  private config!: AppConfigProvider;
+
+  getServerUrl() {
+    return `http://localhost:${this.config.port}`;
+  }
+
+  isProduction() {
+    return this.config.environment === 'production';
+  }
+}
 ```
 
 📖 See [Configuration Guide](../guide/configuration.md) for complete config provider documentation.

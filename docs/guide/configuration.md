@@ -68,14 +68,23 @@ PORT=4000
 LOG_LEVEL=debug
 ```
 
-### 3. Use in Your Application
+### 3. Inject in Your Services
 
 ```typescript
-const config = new AppConfigProvider();
+import { Injectable, Autowired } from '@riktajs/core';
+import { APP_CONFIG } from './config/app-config.provider';
 
-console.log(config.name);        // "Rikta App"
-console.log(config.port);        // 4000
-console.log(config.isProduction()); // false
+@Injectable()
+export class UserService {
+  @Autowired(APP_CONFIG)
+  private config!: AppConfigProvider;
+
+  getServerInfo() {
+    console.log(this.config.name);        // "Rikta App"
+    console.log(this.config.port);        // 4000
+    console.log(this.config.isProduction()); // false
+  }
+}
 ```
 
 ## Core Concepts
@@ -129,25 +138,25 @@ Config providers are managed by Rikta's DI container:
 **Key Benefits:**
 - ✅ **Singleton by default:** Config instances are created once and cached
 - ✅ **Lazy initialization:** Configs are only instantiated when needed
-- ✅ **DI ready:** Future versions will support injecting configs with `@Autowired(TOKEN)`
+- ✅ **Dependency Injection:** Inject configs using `@Autowired(TOKEN)`
 - ✅ **Type-safe:** Full TypeScript inference for all properties
 
-**Current Usage:**
+**Usage with Dependency Injection:**
 ```typescript
-// Direct instantiation (current approach)
-const config = new AppConfigProvider();
-console.log(config.port);  // Type-safe access
-```
+import { Injectable, Autowired } from '@riktajs/core';
+import { APP_CONFIG, AppConfigProvider } from './config/app-config.provider';
 
-**Future DI Support:**
-```typescript
-// Dependency injection (coming soon)
 @Injectable()
 class UserService {
-  constructor(@Autowired(APP_CONFIG) private config: AppConfigProvider) {}
+  @Autowired(APP_CONFIG)
+  private config!: AppConfigProvider;
   
   getPort() {
-    return this.config.port;  // Injected config
+    return this.config.port;  // Type-safe, injected config
+  }
+  
+  isDev() {
+    return this.config.environment === 'development';
   }
 }
 ```
@@ -463,16 +472,22 @@ export class AppConfigProvider extends AbstractConfigProvider {
   }
 }
 
-// Usage
-const config = new AppConfigProvider();
+// Usage with Dependency Injection
+@Injectable()
+export class DatabaseService {
+  @Autowired(APP_CONFIG)
+  private config!: AppConfigProvider;
 
-if (config.isProduction()) {
-  console.log('Running in production mode');
-}
+  async initialize() {
+    if (this.config.isProduction()) {
+      console.log('Running in production mode');
+    }
 
-const dbUrl = config.getDatabaseUrl();
-if (dbUrl) {
-  await connectToDatabase(dbUrl);
+    const dbUrl = this.config.getDatabaseUrl();
+    if (dbUrl) {
+      await connectToDatabase(dbUrl);
+    }
+  }
 }
 ```
 
@@ -757,26 +772,44 @@ export class AppConfigProvider extends AbstractConfigProvider {
   }
 }
 
-// Usage
-const config = new AppConfigProvider();
-console.log(config.baseUrl);  // "http://localhost:3000" or "https://example.com:443"
-```
-
-### Singleton Pattern (Future)
-
-Currently, you create instances manually:
-```typescript
-const config = new AppConfigProvider();
-```
-
-In a future version with auto-discovery integration, config providers will be available as singletons through the DI container:
-```typescript
-// Future API (Step 8)
+// Usage with DI
 @Injectable()
-class UserService {
-  constructor(
-    @Inject(APP_CONFIG) private config: AppConfigProvider
-  ) {}
+export class ApiService {
+  @Autowired(APP_CONFIG)
+  private config!: AppConfigProvider;
+
+  getBaseUrl() {
+    return this.config.baseUrl;  // "http://localhost:3000" or "https://example.com:443"
+  }
+}
+```
+
+### Singleton Pattern
+
+Config providers are automatically managed as singletons by the DI container:
+
+```typescript
+import { Injectable, Autowired } from '@riktajs/core';
+import { APP_CONFIG, AppConfigProvider } from './config/app-config.provider';
+
+@Injectable()
+export class UserService {
+  @Autowired(APP_CONFIG)
+  private config!: AppConfigProvider;  // Same instance shared across all services
+  
+  getAppInfo() {
+    return `${this.config.name} v${this.config.version}`;
+  }
+}
+
+@Injectable()
+export class ApiService {
+  @Autowired(APP_CONFIG)
+  private config!: AppConfigProvider;  // Same instance as UserService
+  
+  getBaseUrl() {
+    return `${this.config.host}:${this.config.port}`;
+  }
 }
 ```
 
@@ -784,11 +817,16 @@ class UserService {
 
 ### Validation Errors
 
-When a Zod schema validation fails, an error is thrown:
+When a Zod schema validation fails during config provider initialization, an error is thrown:
 
 ```typescript
+import { ZodError } from 'zod';
+
+// Validation happens automatically when the DI container instantiates the config
+// If validation fails, the application will fail to start with a clear error
+
 try {
-  const config = new AppConfigProvider();
+  const app = await Rikta.create({ port: 3000 });
 } catch (error) {
   if (error instanceof ZodError) {
     console.error('Configuration validation failed:');
@@ -835,10 +873,17 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 **After:**
 ```typescript
-const config = new AppConfigProvider();
-const port = config.port;  // Type-safe number
-const dbHost = config.dbHost;  // Type-safe string
-const isProduction = config.isProduction();  // Type-safe boolean
+@Injectable()
+export class AppService {
+  @Autowired(APP_CONFIG)
+  private config!: AppConfigProvider;
+
+  initialize() {
+    const port = this.config.port;  // Type-safe number
+    const dbHost = this.config.dbHost;  // Type-safe string
+    const isProduction = this.config.isProduction();  // Type-safe boolean
+  }
+}
 ```
 
 ### From dotenv Package
@@ -856,7 +901,7 @@ const config = {
 
 **After:**
 ```typescript
-@Provider('APP_CONFIG')
+@Provider(APP_CONFIG)
 class AppConfigProvider extends AbstractConfigProvider {
   schema() {
     return z.object({
@@ -876,7 +921,16 @@ class AppConfigProvider extends AbstractConfigProvider {
   }
 }
 
-const config = new AppConfigProvider();
+// Use in services via DI
+@Injectable()
+export class DatabaseService {
+  @Autowired(APP_CONFIG)
+  private config!: AppConfigProvider;
+  
+  async connect() {
+    console.log(`Connecting to ${this.config.dbHost}:${this.config.dbPort}`);
+  }
+}
 ```
 
 ## Example: Complete Application Config
@@ -1058,11 +1112,39 @@ export class AppConfigProvider extends AbstractConfigProvider {
     return `${this.host}:${this.port}`;
   }
 }
+
+// Usage in services via Dependency Injection
+@Injectable()
+export class DatabaseService {
+  @Autowired(APP_CONFIG)
+  private config!: AppConfigProvider;
+  
+  async connect() {
+    const url = this.config.getDatabaseUrl();
+    const poolConfig = this.config.getDatabasePoolConfig();
+    
+    console.log(`Connecting to database: ${url}`);
+    console.log(`Pool config: min=${poolConfig.min}, max=${poolConfig.max}`);
+  }
+}
+
+@Injectable()
+export class ApiService {
+  @Autowired(APP_CONFIG)
+  private config!: AppConfigProvider;
+  
+  makeRequest() {
+    const timeout = this.config.apiTimeout;
+    const maxRetries = this.config.apiMaxRetries;
+    
+    console.log(`Making API request with timeout=${timeout}ms, retries=${maxRetries}`);
+  }
+}
 ```
 
 ## Next Steps
 
-- Read about [Dependency Injection](./dependency-injection.md) for future DI integration
+- Read about [Dependency Injection](./dependency-injection.md) to learn more about `@Autowired` and DI
 - Learn about [Validation](./validation.md) for request validation
 - Explore [Architecture](./architecture.md) for system overview
 
