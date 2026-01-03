@@ -29,7 +29,7 @@
   "author": "",
   "license": "MIT",
   "peerDependencies": {
-    "@riktajs/core": ">=0.4.0",
+    "@riktajs/core": ">=0.4.1",
     "fastify": ">=5.0.0",
     "reflect-metadata": ">=0.2.0",
     "zod": ">=3.20.0"

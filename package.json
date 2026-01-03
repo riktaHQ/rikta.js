@@ -2,6 +2,7 @@
   "name": "@riktajs/monorepo",
   "version": "0.4.1",
   "description": "A fast and modern TypeScript backend framework with zero-config autowiring, powered by Fastify",
+  "type": "module",
   "private": true,
   "workspaces": [
     "packages/*",
@@ -20,7 +21,9 @@
     "bench": "npm run bench --workspace=benchmarks",
     "bench:startup": "npm run bench:startup --workspace=benchmarks",
     "bench:requests": "npm run bench:requests --workspace=benchmarks",
-    "bench:autocannon": "npm run bench:autocannon --workspace=benchmarks"
+    "bench:autocannon": "npm run bench:autocannon --workspace=benchmarks",
+    "sync:version": "node scripts/sync-core-version.js",
+    "version:core": "npm version --workspace=@riktajs/core"
   },
   "keywords": [
     "framework",

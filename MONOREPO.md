@@ -117,6 +117,8 @@ npm run bench
 
 ## Publishing
 
+### Manual Publishing
+
 To publish the core package:
 ```bash
 cd packages/core
@@ -124,6 +126,42 @@ npm publish
 ```
 
 The example and benchmarks are marked as `private: true` and won't be published.
+
+### Automated Release Process
+
+For versioning and releasing, use the automated workflow:
+
+```bash
+# Release a new version (patch, minor, major)
+npm run version:core patch
+```
+
+This automatically:
+- Runs tests and builds
+- Updates version in core package
+- Syncs version to all dependent packages
+- Creates git commit and tag
+
+See [RELEASE.md](RELEASE.md) for the complete release guide.
+
+## Version Management
+
+The monorepo uses automatic version synchronization:
+
+- **Workspace dependencies** use `"*"` (always local version)
+- **Peer dependencies** are automatically updated on version bump
+- **Scripts** handle all version synchronization automatically
+
+Key commands:
+```bash
+# Sync core version across all packages
+npm run sync:version
+
+# Release new version
+npm run version:core [patch|minor|major]
+```
+
+See [scripts/README.md](scripts/README.md) for details on version management scripts.
 
 ## Migration Checklist
 
