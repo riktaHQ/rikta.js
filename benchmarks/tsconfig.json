@@ -1,12 +1,14 @@
 {
-  "extends": "../tsconfig.json",
   "compilerOptions": {
     "module": "ESNext",
     "moduleResolution": "node",
     "target": "ES2022",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "strict": true
+    "strict": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "lib": ["ES2022"]
   },
   "include": ["**/*.ts"],
   "exclude": ["node_modules"]
