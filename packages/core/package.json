@@ -1,6 +1,6 @@
 {
   "name": "@riktajs/core",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "A fast and modern TypeScript backend framework with zero-config autowiring, powered by Fastify",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
