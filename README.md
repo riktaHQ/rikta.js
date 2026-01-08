@@ -26,66 +26,94 @@ Rikta is nordic for "guide". Let Rikta guide you to build better backends, faste
 
 ## ⚡ Quick Start
 
-### 1. Install
+Get up and running in seconds with the Rikta CLI:
 
 ```bash
-npm install @riktajs/core
+# Create a new project
+npx @riktajs/cli new my-app
+
+# Start development
+cd my-app
+npm run dev
 ```
 
-### 2. Create your App
+That's it! 🎉 Your API is running at `http://localhost:3000`
 
-No complex setup. Just one file is enough to start.
+### What you get
+
+The CLI generates a complete project with:
+- ✅ TypeScript configuration optimized for Rikta
+- ✅ Example controller with REST endpoints
+- ✅ Example service with dependency injection
+- ✅ Hot reload development server
+- ✅ Production build for serverless deployment
+
+### Generated Code Example
 
 ```typescript
-// main.ts
-import { Rikta, Controller, Injectable, Get, Post, Body, Autowired, z } from '@riktajs/core';
+// src/controllers/app.controller.ts
+import { Controller, Get, Autowired } from '@riktajs/core';
+import { GreetingService } from '../services/greeting.service.js';
 
-// 1. Define a Service (Auto-discovered!)
-@Injectable()
-class UserService {
-  private users = [{ id: 1, name: 'Rikta User' }];
-
-  findAll() { return this.users; }
-  
-  create(name: string) {
-    const user = { id: this.users.length + 1, name };
-    this.users.push(user);
-    return user;
-  }
-}
-
-// 2. Define a Schema (Type-safe!)
-const CreateUserSchema = z.object({
-  name: z.string().min(3)
-});
-
-// 3. Define a Controller (Auto-discovered!)
-@Controller('/users')
-export class UserController {
+@Controller()
+export class AppController {
   @Autowired()
-  private userService!: UserService; // Dependency Injection works like magic
+  private greetingService!: GreetingService;
 
-  @Get()
-  getUsers() {
-    return this.userService.findAll();
+  @Get('/')
+  index() {
+    return { message: this.greetingService.getGreeting() };
   }
 
-  @Post()
-  createUser(@Body(CreateUserSchema) body: z.infer<typeof CreateUserSchema>) {
-    // 'body' is fully typed here!
-    return this.userService.create(body.name);
+  @Get('/health')
+  health() {
+    return { status: 'ok', timestamp: new Date().toISOString() };
   }
 }
-
-// 4. Run it!
-// autowired paths are resolved relative to your project, not node_modules!
-const app = await Rikta.create({ 
-  port: 3000, 
-  autowired: ['./src']  // Relative paths are resolved from YOUR project directory
-});
-await app.listen();
-console.log('🚀 Server running on http://localhost:3000');
 ```
+
+```typescript
+// src/services/greeting.service.ts
+import { Injectable } from '@riktajs/core';
+
+@Injectable()
+export class GreetingService {
+  getGreeting(): string {
+    return 'Welcome to Rikta! 🚀';
+  }
+}
+```
+
+---
+
+## 📦 Packages
+
+| Package | Description | Version |
+|---------|-------------|---------|
+| [@riktajs/core](./packages/core) | Core framework with DI, routing, and validation | [![npm](https://img.shields.io/npm/v/@riktajs/core)](https://www.npmjs.com/package/@riktajs/core) |
+| [@riktajs/cli](./packages/cli) | CLI for scaffolding and development | [![npm](https://img.shields.io/npm/v/@riktajs/cli)](https://www.npmjs.com/package/@riktajs/cli) |
+| [@riktajs/swagger](./packages/swagger) | OpenAPI/Swagger documentation | [![npm](https://img.shields.io/npm/v/@riktajs/swagger)](https://www.npmjs.com/package/@riktajs/swagger) |
+| [@riktajs/typeorm](./packages/typeorm) | TypeORM integration | [![npm](https://img.shields.io/npm/v/@riktajs/typeorm)](https://www.npmjs.com/package/@riktajs/typeorm) |
+
+---
+
+## 🛠️ CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `rikta new <name>` | Create a new Rikta project |
+| `rikta dev` | Start development server with hot reload |
+| `rikta build` | Build for production (serverless optimized) |
+
+```bash
+# Global installation (optional)
+npm install -g @riktajs/cli
+
+# Or use npx directly
+npx @riktajs/cli new my-app
+```
+
+See the [CLI Guide](./docs/guide/cli.md) for full documentation.
 
 ---
 
@@ -102,6 +130,7 @@ Everything you need to build production-ready APIs.
 | [**Validation**](./docs/guide/validation.md) | **New!** Type-safe validation with Zod. |
 | [**Lifecycle**](./docs/guide/lifecycle.md) | Hooks (`OnProviderInit`) and the Event Bus. |
 | [**Error Handling**](./docs/guide/error-handling.md) | Exception filters and standard JSON responses. |
+| [**CLI Guide**](./packages/cli/README.md) | Using the Rikta CLI. |
 | [**Benchmarks**](./benchmarks/README.md) | Performance comparison with Fastify & NestJS. |
 
 ---

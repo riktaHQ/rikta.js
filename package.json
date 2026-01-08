@@ -17,13 +17,18 @@
     "test:coverage": "npm run test:coverage --workspaces --if-present",
     "test:core": "npm run test --workspace=@riktajs/core",
     "test:swagger": "npm run test --workspace=@riktajs/swagger",
+    "test:cli": "npm run test --workspace=@riktajs/cli",
     "example": "npm run dev --workspace=example",
     "bench": "npm run bench --workspace=benchmarks",
     "bench:startup": "npm run bench:startup --workspace=benchmarks",
     "bench:requests": "npm run bench:requests --workspace=benchmarks",
     "bench:autocannon": "npm run bench:autocannon --workspace=benchmarks",
     "sync:version": "node scripts/sync-core-version.js",
-    "version:core": "npm version --workspace=@riktajs/core"
+    "version:core": "npm version --workspace=@riktajs/core",
+    "version:cli": "npm version --workspace=@riktajs/cli",
+    "cli": "npm run --workspace=@riktajs/cli",
+    "cli:build": "npm run build --workspace=@riktajs/cli",
+    "cli:dev": "npm run dev --workspace=@riktajs/cli"
   },
   "keywords": [
     "framework",

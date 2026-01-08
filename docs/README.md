@@ -5,6 +5,7 @@ Welcome to the official documentation for Rikta Framework.
 ## 🚀 Getting Started
 
 - [Installation & Quick Start](../README.md)
+- [CLI Guide](./guide/cli.md) - Scaffold, develop and build projects
 - [Example Application](../example/README.md)
 
 ## 📖 Guide

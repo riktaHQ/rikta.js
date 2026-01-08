@@ -1,0 +1,30 @@
+{
+  "name": "my-rikta-app",
+  "version": "0.1.0",
+  "description": "A Rikta application",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "rikta dev",
+    "build": "rikta build",
+    "start": "node dist/index.js"
+  },
+  "keywords": [
+    "rikta",
+    "backend",
+    "typescript",
+    "fastify"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@riktajs/core": "^0.4.2"
+  },
+  "devDependencies": {
+    "@riktajs/cli": "^0.1.4",
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
