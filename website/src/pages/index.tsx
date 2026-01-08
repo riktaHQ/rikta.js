@@ -21,16 +21,31 @@ function HomepageHeader() {
         </p>
         <div className={styles.buttons}>
           <Link
-            className="button button--secondary button--lg"
-            to="/docs/intro">
-            Get Started 🚀
+            className="button button--primary button--lg"
+            to="/docs/overview/first-steps">
+            Get Started
           </Link>
           <Link
             className="button button--outline button--lg"
-            style={{ marginLeft: '1rem', color: 'white', borderColor: 'white' }}
-            to="/docs/guide/architecture">
+            to="/docs">
             Learn More
           </Link>
+        </div>
+
+        {/* Quick Start Terminal */}
+        <div className={styles.terminalWrapper}>
+          <div className={styles.terminalHeader}>
+            <div className={styles.terminalButtons}>
+              <span className={styles.terminalButtonRed}></span>
+              <span className={styles.terminalButtonYellow}></span>
+              <span className={styles.terminalButtonGreen}></span>
+            </div>
+            <div className={styles.terminalTitle}>⚡ Quick Start</div>
+          </div>
+          <pre className={styles.terminal}>
+            <code dangerouslySetInnerHTML={{
+              __html: `<span style="color: #9ece6a;">npx</span> <span style="color: #bb9af7;">@riktajs/cli</span> <span style="color: #7dcfff;">new</span> my-app` }} />
+          </pre>
         </div>
       </div>
     </header>
@@ -132,58 +147,12 @@ function HomepageFeatures(): JSX.Element {
   );
 }
 
-function QuickStartSection(): JSX.Element {
-  return (
-    <section className={styles.quickStart}>
-      <div className="container">
-        <Heading as="h2" className="text--center" style={{ marginBottom: '2rem' }}>
-          ⚡ Quick Start
-        </Heading>
-        <div className="row">
-          <div className="col col--6">
-            <pre className={styles.codeBlock}>
-              <code>
-{`# Create a new project
-npx @riktajs/cli new my-app
-
-# Start development
-cd my-app
-npm run dev`}
-              </code>
-            </pre>
-          </div>
-          <div className="col col--6">
-            <pre className={styles.codeBlock}>
-              <code>
-{`// src/controllers/app.controller.ts
-import { Controller, Get, Autowired } from '@riktajs/core';
-import { GreetingService } from '../services/greeting.service.js';
-
-@Controller()
-export class AppController {
-  @Autowired()
-  private greetingService!: GreetingService;
-
-  @Get('/')
-  index() {
-    return { message: this.greetingService.getGreeting() };
-  }
-}`}
-              </code>
-            </pre>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function PackagesSection(): JSX.Element {
   const packages = [
-    { name: '@riktajs/core', desc: 'Core framework with DI, routing, and validation', link: '/docs/packages/core' },
-    { name: '@riktajs/cli', desc: 'CLI for scaffolding and development', link: '/docs/packages/cli' },
-    { name: '@riktajs/swagger', desc: 'OpenAPI/Swagger documentation', link: '/docs/packages/swagger' },
-    { name: '@riktajs/typeorm', desc: 'TypeORM integration', link: '/docs/packages/typeorm' },
+    { name: '@riktajs/core', desc: 'Core framework with DI, routing, and validation', link: '/docs/api-reference' },
+    { name: '@riktajs/cli', desc: 'CLI for scaffolding and development', link: '/docs/cli/overview' },
+    { name: '@riktajs/swagger', desc: 'OpenAPI/Swagger documentation', link: '/docs/openapi/introduction' },
+    { name: '@riktajs/typeorm', desc: 'TypeORM integration', link: '/docs/database/typeorm' },
   ];
 
   return (
@@ -216,7 +185,6 @@ export default function Home(): JSX.Element {
       <HomepageHeader />
       <main>
         <HomepageFeatures />
-        <QuickStartSection />
         <PackagesSection />
       </main>
     </Layout>

@@ -199,6 +199,5 @@ Runs the compiled application.
 
 ## Next Steps
 
-- [Commands](/docs/cli/commands) - Learn all CLI commands
-- [Deployment](/docs/cli/deployment) - Deploy your application
 - [First Steps](/docs/overview/first-steps) - Deep dive into Rikta concepts
+- [API Reference](/docs/api-reference) - Complete API documentation

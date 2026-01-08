@@ -283,7 +283,7 @@ it('should work with DI', () => {
 2. Set environment variables
 3. Run: `node dist/index.js`
 
-See the [Deployment guide](/docs/cli/deployment) for detailed instructions.
+Use the `rikta build` command to create a production build, then deploy the `dist` folder to your hosting platform.
 
 ### How do I run with PM2?
 
@@ -293,7 +293,7 @@ pm2 start dist/index.js --name my-app -i max
 
 ### How do I containerize with Docker?
 
-See the [Docker deployment section](/docs/cli/deployment#docker-deployment) for a complete Dockerfile example.
+Create a Dockerfile that copies your built application and runs `node dist/index.js`.
 
 ## Troubleshooting
 

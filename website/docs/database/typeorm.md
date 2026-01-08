@@ -903,5 +903,5 @@ npx typeorm migration:run -d ./data-source.ts
 
 - [TypeORM Documentation](https://typeorm.io)
 - [Rikta Configuration Guide](/docs/fundamentals/configuration)
-- [Rikta Lifecycle Events](/docs/fundamentals/lifecycle-events)
+- [Rikta Lifecycle](/docs/fundamentals/lifecycle-events)
 - [@riktajs/typeorm on npm](https://www.npmjs.com/package/@riktajs/typeorm)

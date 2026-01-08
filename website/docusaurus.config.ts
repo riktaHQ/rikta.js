@@ -27,11 +27,11 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
-          editUrl: 'https://github.com/riktajs/rikta/tree/main/website/',
+          editUrl: 'https://github.com/riktahq/rikta/tree/main/website/',
         },
         blog: {
           showReadingTime: true,
-          editUrl: 'https://github.com/riktajs/rikta/tree/main/website/',
+          editUrl: 'https://github.com/riktahq/rikta/tree/main/website/',
         },
         theme: {
           customCss: './src/css/custom.css',
@@ -42,6 +42,11 @@ const config: Config = {
 
   themeConfig: {
     image: 'img/rikta-social-card.jpg',
+    colorMode: {
+      defaultMode: 'dark',
+      disableSwitch: true,
+      respectPrefersColorScheme: true,
+    },
     navbar: {
       title: 'Rikta',
       logo: {
@@ -56,8 +61,8 @@ const config: Config = {
           label: 'Documentation',
         },
         {
-          to: '/docs/packages/core',
-          label: 'Packages',
+          to: '/docs/api-reference',
+          label: 'API Reference',
           position: 'left',
         },
         {
@@ -66,7 +71,7 @@ const config: Config = {
           position: 'left',
         },
         {
-          href: 'https://github.com/riktajs/rikta',
+          href: 'https://github.com/riktahq/rikta',
           label: 'GitHub',
           position: 'right',
         },
@@ -80,15 +85,15 @@ const config: Config = {
           items: [
             {
               label: 'Getting Started',
-              to: '/docs/intro',
+              to: '/docs/overview/first-steps',
             },
             {
               label: 'Architecture',
-              to: '/docs/guide/architecture',
+              to: '/docs/fundamentals/dependency-injection',
             },
             {
               label: 'API Reference',
-              to: '/docs/api/decorators',
+              to: '/docs/api-reference',
             },
           ],
         },
@@ -97,19 +102,19 @@ const config: Config = {
           items: [
             {
               label: '@riktajs/core',
-              to: '/docs/packages/core',
+              to: '/docs/api-reference#core-decorators',
             },
             {
               label: '@riktajs/cli',
-              to: '/docs/packages/cli',
+              to: '/docs/cli/overview',
             },
             {
               label: '@riktajs/swagger',
-              to: '/docs/packages/swagger',
+              to: '/docs/openapi/introduction',
             },
             {
               label: '@riktajs/typeorm',
-              to: '/docs/packages/typeorm',
+              to: '/docs/database/typeorm',
             },
           ],
         },
@@ -118,7 +123,7 @@ const config: Config = {
           items: [
             {
               label: 'GitHub',
-              href: 'https://github.com/riktajs/rikta',
+              href: 'https://github.com/riktahq/rikta',
             },
             {
               label: 'NPM',

@@ -67,8 +67,7 @@ const sidebars: SidebarsConfig = {
       label: 'CLI',
       items: [
         'cli/overview',
-        'cli/commands',
-        'cli/deployment',
+        'cli/commands'
       ],
     },
     {

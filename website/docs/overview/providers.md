@@ -113,7 +113,7 @@ private catsService!: CatsService;
 
 Providers normally have a lifetime ("scope") synchronized with the application lifecycle. When the application is bootstrapped, every dependency must be resolved, and therefore every provider has to be instantiated.
 
-However, there are ways to make your provider lifetime **request-scoped** as well. You can read more about these techniques in the [injection scopes](/docs/fundamentals/dependency-injection#scopes) chapter.
+However, there are ways to make your provider lifetime **request-scoped** as well. You can read more about these techniques in the [dependency injection](/docs/fundamentals/dependency-injection) chapter.
 
 ## Custom providers
 

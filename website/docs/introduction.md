@@ -52,10 +52,10 @@ The CLI generates a complete project with:
 
 | Package | Description |
 |---------|-------------|
-| [@riktajs/core](/docs/packages/core) | Core framework with DI, routing, and validation |
-| [@riktajs/cli](/docs/packages/cli) | CLI for scaffolding and development |
-| [@riktajs/swagger](/docs/packages/swagger) | OpenAPI/Swagger documentation |
-| [@riktajs/typeorm](/docs/packages/typeorm) | TypeORM integration |
+| [@riktajs/core](/docs/api-reference) | Core framework with DI, routing, and validation |
+| [@riktajs/cli](/docs/cli/overview) | CLI for scaffolding and development |
+| [@riktajs/swagger](/docs/openapi/introduction) | OpenAPI/Swagger documentation |
+| [@riktajs/typeorm](/docs/database/typeorm) | TypeORM integration |
 
 ## 🛠️ CLI Commands
 
@@ -119,4 +119,4 @@ class AuthService {
 
 ## Next Steps
 
-Ready to get started? Head to the [Quick Start](/docs/getting-started/quick-start) guide!
+Ready to get started? Head to the [First Steps](/docs/overview/first-steps) guide!

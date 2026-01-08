@@ -37,13 +37,13 @@ npm run bench:autocannon
 
 ## 🎯 Results Summary
 
-| Metric | Rikta vs NestJS | Winner |
-|--------|-----------------|--------|
-| Startup | 🟢 **-37.7%** | Rikta |
-| GET / | 🟢 **-44.3%** | Rikta |
-| POST / | 🟢 **-14.8%** | Rikta |
-| GET /:id | 🟢 **-36.7%** | Rikta |
-| **Average** | 🟢 **-32.0%** | **Rikta** |
+| Metric | Rikta vs NestJS | Rikta vs Fastify |
+|--------|-----------------|------------------|
+| Startup | 🟢 **-53% faster** | 🟢 **-6% faster** |
+| Throughput | 🟢 **+7% faster** | 🟡 **~5% slower** |
+| Latency | 🟢 **~35% faster** | 🟡 **competitive** |
+
+**Key Takeaway:** Rikta is significantly faster than NestJS and adds minimal overhead over vanilla Fastify.
 
 See [RESULTS.md](./RESULTS.md) for detailed results.
 

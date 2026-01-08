@@ -4,23 +4,22 @@
 
 | Metric | vs NestJS | vs Fastify |
 |--------|-----------|------------|
-| **Startup** | 🟢 **-37.7%** | +10.5% |
-| **GET /** | 🟢 **-44.3%** | +26.4% |
-| **POST /** | 🟢 **-14.8%** | -15.0% |
-| **GET /:id** | 🟢 **-36.7%** | +10.0% |
+| **Startup** | 🟢 **-53.3% faster** | 🟢 **-6.3% faster** |
+| **Throughput** | 🟢 **+6.9% faster** | 🟡 **~5% slower** |
+| **Request Latency** | 🟢 **~35% faster** | 🟡 **competitive** |
 
 ## 📊 Key Numbers
 
 ```
-Startup: Rikta 3.04ms | NestJS 4.88ms | Fastify 2.75ms
-GET /  : Rikta 0.139ms | NestJS 0.250ms | Fastify 0.110ms
-POST / : Rikta 0.113ms | NestJS 0.133ms | Fastify 0.133ms
-GET/:id: Rikta 0.110ms | NestJS 0.174ms | Fastify 0.100ms
+Startup:    Rikta 2.87ms   | NestJS 6.15ms   | Fastify 3.06ms
+Throughput: Rikta 12,253/s | NestJS 11,460/s | Fastify 12,949/s
 ```
 
 ## ✅ Verdict
 
-**Rikta is 32% faster than NestJS on average** while providing a similar developer experience with decorators and dependency injection.
+**Rikta is ~35% faster than NestJS** while providing a similar developer experience with decorators and dependency injection.
+
+**Rikta is competitive with vanilla Fastify** - adds minimal overhead (~5-10%) while providing DI, decorators, and structured architecture.
 
 ## 🚀 Best Performance Settings
 

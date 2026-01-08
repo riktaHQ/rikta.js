@@ -188,17 +188,30 @@ async function runBenchmark() {
 
   // Setup Fastify
   console.log('⚙️  Setting up Fastify...');
-  const fastifyApp = Fastify({ logger: false });
-  const users: any[] = [];
+  const fastifyApp = Fastify({ 
+    logger: false,
+    disableRequestLogging: true,
+    bodyLimit: 1048576
+  });
   
-  fastifyApp.get('/api/users', async () => users);
+  // Use a shared service-like object for fair comparison
+  const fastifyUserService = {
+    users: [] as any[],
+    getAll() { return this.users; },
+    getById(id: string) { return { id, name: `User ${id}`, email: `user${id}@test.com` }; },
+    create(data: any) {
+      const user = { id: Date.now().toString(), ...data };
+      this.users.push(user);
+      return user;
+    }
+  };
+  
+  fastifyApp.get('/api/users', async () => fastifyUserService.getAll());
   fastifyApp.get('/api/users/:id', async (req: any) => {
-    return users.find(u => u.id === req.params.id) || { id: req.params.id, name: 'Test User' };
+    return fastifyUserService.getById(req.params.id);
   });
   fastifyApp.post('/api/users', async (req: any) => {
-    const user = { id: Date.now().toString(), ...req.body };
-    users.push(user);
-    return user;
+    return fastifyUserService.create(req.body);
   });
 
   await fastifyApp.listen({ port: 0, host: '127.0.0.1' });

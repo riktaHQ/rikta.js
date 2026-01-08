@@ -1,110 +1,279 @@
+/**
+ * Rephole Documentation - Custom Styles
+ * A modern, distinctive design for developer documentation
+ */
+
+/* Import distinctive fonts */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
 :root {
-  --ifm-color-primary: #3b82f6;
-  --ifm-color-primary-dark: #2563eb;
-  --ifm-color-primary-darker: #1d4ed8;
-  --ifm-color-primary-darkest: #1e40af;
-  --ifm-color-primary-light: #60a5fa;
-  --ifm-color-primary-lighter: #93c5fd;
-  --ifm-color-primary-lightest: #bfdbfe;
-  --ifm-code-font-size: 95%;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+  /* Rephole Brand Colors - Deep purple/indigo with electric accents */
+  --ifm-color-primary: #6366f1;
+  --ifm-color-primary-dark: #4f46e5;
+  --ifm-color-primary-darker: #4338ca;
+  --ifm-color-primary-darkest: #3730a3;
+  --ifm-color-primary-light: #818cf8;
+  --ifm-color-primary-lighter: #a5b4fc;
+  --ifm-color-primary-lightest: #c7d2fe;
+  
+  /* Accent colors */
+  --rephole-accent: #f472b6;
+  --rephole-accent-light: #f9a8d4;
+  --rephole-success: #34d399;
+  --rephole-warning: #fbbf24;
+  --rephole-code-bg: #1e1b4b;
+  
+  /* Typography */
+  --ifm-font-family-base: 'Outfit', system-ui, -apple-system, sans-serif;
+  --ifm-font-family-monospace: 'JetBrains Mono', SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --ifm-heading-font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+  --ifm-code-font-size: 90%;
+  
+  /* Spacing & Layout */
+  --ifm-global-radius: 12px;
+  --ifm-navbar-height: 4rem;
+  
+  /* Code highlighting */
+  --docusaurus-highlighted-code-line-bg: rgba(99, 102, 241, 0.15);
+  
+  /* Shadows */
+  --rephole-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --rephole-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --rephole-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 }
 
 [data-theme='dark'] {
-  --ifm-color-primary: #60a5fa;
-  --ifm-color-primary-dark: #3b82f6;
-  --ifm-color-primary-darker: #2563eb;
-  --ifm-color-primary-darkest: #1d4ed8;
-  --ifm-color-primary-light: #93c5fd;
-  --ifm-color-primary-lighter: #bfdbfe;
-  --ifm-color-primary-lightest: #dbeafe;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+  --ifm-color-primary: #818cf8;
+  --ifm-color-primary-dark: #6366f1;
+  --ifm-color-primary-darker: #4f46e5;
+  --ifm-color-primary-darkest: #4338ca;
+  --ifm-color-primary-light: #a5b4fc;
+  --ifm-color-primary-lighter: #c7d2fe;
+  --ifm-color-primary-lightest: #e0e7ff;
+  
+  --rephole-accent: #f9a8d4;
+  --rephole-code-bg: #0f0a1e;
+  
+  --ifm-background-color: #0a0a0f;
+  --ifm-background-surface-color: #13131a;
+  --ifm-navbar-background-color: rgba(10, 10, 15, 0.85);
+  --ifm-footer-background-color: #0a0a0f;
+  
+  --docusaurus-highlighted-code-line-bg: rgba(129, 140, 248, 0.2);
 }
 
-/* Custom styles for Rikta */
+/* Navbar styling */
+.navbar {
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.navbar__logo {
+  height: 2rem;
+  width: auto;
+  margin-right: 0.5rem;
+}
+
+.navbar__title {
+  font-weight: 700;
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
+}
+
+.navbar__link {
+  font-weight: 500;
+}
+
+
+/* Hero section enhancements */
 .hero {
-  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+  background: linear-gradient(160deg, #4338ca 0%, #312e81 30%, #1e1b4b 60%, #0f0a1e 100%);
+  position: relative;
+  overflow: hidden;
+  color: white;
+}
+
+[data-theme='light'] .hero {
+  background: linear-gradient(160deg, #6366f1 0%, #4f46e5 30%, #4338ca 60%, #3730a3 100%);
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(139, 92, 246, 0.3), transparent),
+    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(249, 168, 212, 0.2), transparent);
+  pointer-events: none;
 }
 
 .hero__title {
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
   font-size: 3.5rem;
+  color: white;
+  margin-bottom: 1rem;
 }
 
 .hero__subtitle {
+  font-weight: 400;
+  opacity: 0.95;
   font-size: 1.5rem;
-  opacity: 0.9;
+  color: white;
+  margin-bottom: 1rem;
 }
 
-/* Feature cards */
-.feature-card {
-  padding: 1.5rem;
-  border-radius: 12px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+[data-theme='light'] .hero__title,
+[data-theme='light'] .hero__subtitle {
+  color: white;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-.feature-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+/* Button styles */
+.button {
+  font-weight: 600;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+  text-transform: none;
+  letter-spacing: -0.01em;
+  padding: 0.75rem 2rem;
+  font-size: 1.1rem;
+}
+
+.button--primary {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  border: none;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.5);
+  color: white;
+}
+
+.button--primary:hover {
+  background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.6);
+  transform: translateY(-2px);
+  color: white;
+}
+
+.button--secondary {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  backdrop-filter: blur(10px);
+}
+
+.button--secondary:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: white;
+  transform: translateY(-2px);
 }
 
 /* Code blocks */
-.prism-code {
+pre {
+  border-radius: var(--ifm-global-radius);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+code {
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+/* Cards and containers */
+.card {
+  border-radius: var(--ifm-global-radius);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.02);
+  transition: all 0.2s ease;
+}
+
+.card:hover {
+  border-color: var(--ifm-color-primary);
+  transform: translateY(-2px);
+  box-shadow: var(--rephole-shadow-lg);
+}
+
+/* Sidebar styling */
+.menu__link {
   border-radius: 8px;
+  font-weight: 500;
+}
+
+.menu__link--active {
+  background: rgba(99, 102, 241, 0.1);
 }
 
 /* Table styling */
 table {
-  display: table;
-  width: 100%;
+  border-radius: var(--ifm-global-radius);
+  overflow: hidden;
 }
 
-th, td {
-  padding: 0.75rem 1rem;
+th {
+  background: rgba(99, 102, 241, 0.1);
+  font-weight: 600;
 }
 
 /* Admonitions */
 .admonition {
-  border-radius: 8px;
-}
-
-/* Navbar */
-.navbar {
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-radius: var(--ifm-global-radius);
+  border-left-width: 4px;
 }
 
 /* Footer */
 .footer {
-  background: #0f172a;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-/* Sidebar */
-.menu__link {
-  border-radius: 6px;
+.footer__title {
+  font-weight: 700;
 }
 
-/* Typography improvements */
-h1, h2, h3, h4, h5, h6 {
-  font-weight: 600;
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.markdown > p {
-  line-height: 1.7;
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 
-/* Badge styling */
-.badge {
-  font-size: 0.75rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 9999px;
-  font-weight: 500;
+/* Scrollbar styling for webkit browsers */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-.badge--primary {
-  background-color: var(--ifm-color-primary);
-  color: white;
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-.badge--success {
-  background-color: #22c55e;
-  color: white;
+::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.5);
+}
+
+/* Selection color */
+::selection {
+  background: rgba(99, 102, 241, 0.3);
 }

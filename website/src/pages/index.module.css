@@ -1,14 +1,20 @@
 .heroBanner {
-  padding: 4rem 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   position: relative;
   overflow: hidden;
+  padding: 2rem 1rem;
 }
 
 .heroDescription {
-  font-size: 1.2rem;
-  margin-bottom: 2rem;
+  font-size: 1.25rem;
+  margin-bottom: 2.5rem;
   opacity: 0.9;
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .buttons {
@@ -16,6 +22,99 @@
   align-items: center;
   justify-content: center;
   gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 3rem;
+}
+
+.terminalWrapper {
+  max-width: 800px;
+  margin: 0 auto;
+  margin-top: 3rem;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  background: #1a1b26;
+  border: 1px solid rgba(167, 139, 250, 0.3);
+}
+
+[data-theme='light'] .terminalWrapper {
+  background: #2d3748;
+  border-color: rgba(99, 102, 241, 0.4);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+.terminalHeader {
+  background: #24283b;
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  border-bottom: 1px solid rgba(167, 139, 250, 0.2);
+}
+
+[data-theme='light'] .terminalHeader {
+  background: #1a202c;
+  border-bottom-color: rgba(99, 102, 241, 0.3);
+}
+
+.terminalButtons {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.terminalButtonRed,
+.terminalButtonYellow,
+.terminalButtonGreen {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.terminalButtonRed {
+  background: #ff5f56;
+}
+
+.terminalButtonYellow {
+  background: #ffbd2e;
+}
+
+.terminalButtonGreen {
+  background: #27c93f;
+}
+
+.terminalTitle {
+  color: #a9b1d6;
+  font-size: 0.875rem;
+  font-weight: 500;
+  flex: 1;
+  text-align: left;
+}
+
+[data-theme='light'] .terminalTitle {
+  color: #cbd5e0;
+}
+
+.terminal {
+  background: #222;
+  color: #c0caf5;
+  padding: 1.5rem;
+  margin: 0;
+  font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
+  font-size: 0.95rem;
+  line-height: 1.8;
+  overflow-x: auto;
+}
+
+[data-theme='light'] .terminal {
+  background: #222;
+  color: #e2e8f0;
+}
+
+.terminal code {
+  color: inherit;
+  font-family: inherit;
+  font-weight: 400;
 }
 
 .features {
@@ -23,21 +122,6 @@
   align-items: center;
   padding: 4rem 0;
   width: 100%;
-}
-
-.quickStart {
-  background-color: var(--ifm-background-surface-color);
-  padding: 4rem 0;
-}
-
-.codeBlock {
-  background-color: #1e293b;
-  color: #e2e8f0;
-  padding: 1.5rem;
-  border-radius: 8px;
-  overflow-x: auto;
-  font-size: 0.9rem;
-  margin: 0;
 }
 
 .packages {
@@ -75,18 +159,31 @@
 
 @media screen and (max-width: 996px) {
   .heroBanner {
-    padding: 2rem;
+    min-height: 100vh;
+    padding: 2rem 1rem;
   }
 
   .heroDescription {
-    font-size: 1rem;
+    font-size: 1.1rem;
   }
 
   .buttons {
     flex-direction: column;
+    width: 100%;
   }
 
   .buttons .button {
     margin: 0.5rem 0;
+    width: 100%;
+    max-width: 300px;
+  }
+
+  .terminalWrapper {
+    margin: 2rem 0.5rem;
+  }
+
+  .terminal {
+    font-size: 0.85rem;
+    padding: 1rem;
   }
 }
