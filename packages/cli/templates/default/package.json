@@ -20,7 +20,7 @@
     "@riktajs/core": "^0.4.4"
   },
   "devDependencies": {
-    "@riktajs/cli": "^0.1.9",
+    "@riktajs/cli": "^0.1.10",
     "@types/node": "^22.10.2",
     "typescript": "^5.7.2"
   },

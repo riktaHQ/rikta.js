@@ -28,14 +28,21 @@ async function waitForDistFolder(distPath: string, timeout = 30000): Promise<boo
   return false;
 }
 
-function startServer(distPath: string, port: string, host: string, verbose: boolean): void {
+function startServer(distPath: string, port: string | undefined, host: string | undefined, verbose: boolean): void {
   const logger = createLogger(verbose);
   const entryPoint = path.join(distPath, 'index.js');
 
-  logger.debug(`Starting server from ${entryPoint} on ${host}:${port}`);
+  const env = { ...process.env };
+  if (port) env.PORT = port;
+  if (host) env.HOST = host;
+
+  const actualPort = port || process.env.PORT || '3000';
+  const actualHost = host || process.env.HOST || '0.0.0.0';
+
+  logger.debug(`Starting server from ${entryPoint} on ${actualHost}:${actualPort}`);
 
   serverProcess = execa('node', [entryPoint], {
-    env: { ...process.env, PORT: port, HOST: host },
+    env,
     stdio: 'inherit',
     reject: false,
   });
@@ -72,7 +79,7 @@ function killServer(): Promise<void> {
   });
 }
 
-async function restartServer(distPath: string, port: string, host: string, verbose: boolean): Promise<void> {
+async function restartServer(distPath: string, port: string | undefined, host: string | undefined, verbose: boolean): Promise<void> {
   const logger = createLogger(verbose);
 
   logger.info('🔄 Restarting server...');
@@ -81,8 +88,11 @@ async function restartServer(distPath: string, port: string, host: string, verbo
   // Small delay to ensure port is released
   await new Promise((resolve) => setTimeout(resolve, 300));
 
+  const actualPort = port || process.env.PORT || '3000';
+  const actualHost = host || process.env.HOST || '0.0.0.0';
+
   startServer(distPath, port, host, verbose);
-  logger.success(`Server restarted on http://${host}:${port}`);
+  logger.success(`Server restarted on http://${actualHost}:${actualPort}`);
 }
 
 export async function handleDev(options: DevCommandOptions): Promise<void> {
@@ -167,7 +177,9 @@ export async function handleDev(options: DevCommandOptions): Promise<void> {
 
             if (!serverStarted) {
               // First compilation - start server
-              logger.step(4, 4, `Starting server on port ${options.port}...`);
+              const actualPort = options.port || process.env.PORT || '3000';
+              const actualHost = options.host || process.env.HOST || '0.0.0.0';
+              logger.step(4, 4, `Starting server on port ${actualPort}...`);
 
               // Wait for dist/index.js to exist
               const distReady = await waitForDistFolder(distPath, 15000);
@@ -180,7 +192,7 @@ export async function handleDev(options: DevCommandOptions): Promise<void> {
 
               startServer(distPath, options.port, options.host, options.verbose);
               serverStarted = true;
-              logger.success(`Server running on http://${options.host}:${options.port}`);
+              logger.success(`Server running on http://${actualHost}:${actualPort}`);
               logger.newLine();
               logger.info('👀 Watching for file changes... (Ctrl+C to stop)');
             } else {
@@ -222,7 +234,9 @@ export async function handleDev(options: DevCommandOptions): Promise<void> {
       await tscProcess;
       logger.success('TypeScript compilation complete');
 
-      logger.step(4, 4, `Starting server on port ${options.port}...`);
+      const actualPort = options.port || process.env.PORT || '3000';
+      const actualHost = options.host || process.env.HOST || '0.0.0.0';
+      logger.step(4, 4, `Starting server on port ${actualPort}...`);
 
       const distReady = await waitForDistFolder(distPath, 5000);
       if (!distReady) {
@@ -230,11 +244,15 @@ export async function handleDev(options: DevCommandOptions): Promise<void> {
         process.exit(1);
       }
 
-      logger.success(`Server running on http://${options.host}:${options.port}`);
+      logger.success(`Server running on http://${actualHost}:${actualPort}`);
+
+      const env = { ...process.env };
+      if (options.port) env.PORT = options.port;
+      if (options.host) env.HOST = options.host;
 
       // Start server and wait for it
       serverProcess = execa('node', [path.join(distPath, 'index.js')], {
-        env: { ...process.env, PORT: options.port, HOST: options.host },
+        env,
         stdio: 'inherit',
       });
 

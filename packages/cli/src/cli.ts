@@ -41,8 +41,8 @@ export function setupCLI(): Command {
     .command('dev')
     .alias('serve')
     .description('Start development server with hot reload')
-    .option('-p, --port <port>', 'Port to run the server on', '3000')
-    .option('-H, --host <host>', 'Host to bind the server to', '0.0.0.0')
+    .option('-p, --port <port>', 'Port to run the server on')
+    .option('-H, --host <host>', 'Host to bind the server to')
     .option('--no-watch', 'Disable file watching')
     .action(async (options) => {
       const verbose = program.opts().verbose as boolean;
