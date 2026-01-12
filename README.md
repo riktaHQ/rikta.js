@@ -9,6 +9,8 @@ Build scalable APIs with the power of Fastify and the elegance of decorators. No
 
 ---
 
+<img src="https://fsn1.your-objectstorage.com/artiforge/rikta-installed.png" align="center" alt="Rikta installed" />
+
 ## 🤔 Why Rikta?
 
 Do you miss the simplicity of Express but need the structure of a real framework?
