@@ -87,7 +87,9 @@ export async function handleBuild(options: BuildCommandOptions): Promise<void> {
   const distPath = path.join(cwd, options.outDir);
   const startTime = Date.now();
 
-  logger.banner('Rikta Production Build');
+  logger.newLine();
+  logger.title();
+  logger.tagline('Building Rikta project...');
   logger.newLine();
 
   // Verify we're in a Rikta project

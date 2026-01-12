@@ -99,7 +99,9 @@ export async function handleDev(options: DevCommandOptions): Promise<void> {
   const logger = createLogger(options.verbose);
   const cwd = process.cwd();
 
-  logger.banner('Rikta Development Server');
+  logger.newLine();
+  logger.title();
+  logger.tagline('Developer Server starting...');
   logger.newLine();
 
   // Verify we're in a Rikta project

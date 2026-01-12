@@ -12,7 +12,7 @@ export class Logger {
   }
 
   info(message: string): void {
-    console.log(chalk.blue('ℹ'), message);
+    console.log(message);
   }
 
   success(message: string): void {
@@ -29,7 +29,7 @@ export class Logger {
 
   debug(message: string): void {
     if (this.verbose) {
-      console.log(chalk.gray('🔍'), chalk.gray(message));
+      console.log(chalk.gray(message));
     }
   }
 
@@ -41,11 +41,15 @@ export class Logger {
     console.log();
   }
 
-  banner(text: string): void {
-    const line = '─'.repeat(text.length + 4);
-    console.log(chalk.magenta(line));
-    console.log(chalk.magenta('│'), chalk.bold(text), chalk.magenta('│'));
-    console.log(chalk.magenta(line));
+  title(): void {
+    console.log(chalk.cyan('      _ _   _        '));
+    console.log(chalk.cyan(' _ __(_) |_| |_ __ _ '));
+    console.log(chalk.cyan('| ´__| | / /  _/ _` |'));
+    console.log(chalk.cyan('|_|  |_|_\\_\\__\\__,_|'));
+  }
+
+  tagline(text: string): void {
+    console.log(chalk.dim(text));
   }
 }
 

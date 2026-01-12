@@ -1,6 +1,6 @@
 {
   "name": "@riktajs/cli",
-  "version": "0.1.10",
+  "version": "0.1.12",
   "description": "CLI tool for Rikta framework - scaffold, develop and build projects",
   "type": "module",
   "main": "dist/index.js",

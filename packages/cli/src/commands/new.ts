@@ -15,7 +15,9 @@ export async function handleNew(
 ): Promise<void> {
   const logger = createLogger(options.verbose);
 
-  logger.banner('Rikta Project Generator');
+  logger.newLine();
+  logger.title();
+  logger.tagline('Making TypeScript services simple (and fast) again');
   logger.newLine();
 
   // Step 1: Validate project name
@@ -94,7 +96,12 @@ export async function handleNew(
 
   // Success message
   logger.newLine();
-  logger.success(`🎉 Project "${projectName}" created successfully!`);
+  logger.success(`Project "${projectName}" created successfully!`);
+  logger.newLine();
+  logger.info('Getting started with Rikta');
+  logger.info('1. You can configure routes, controllers, and services');
+  logger.info('2. Hot reload is enabled by default in development mode');
+  logger.info('3. Dependency injection is built-in for clean architecture');
   logger.newLine();
   logger.info('Next steps:');
   logger.info(`  cd ${projectName}`);
