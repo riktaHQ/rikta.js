@@ -53,8 +53,9 @@ export async function handleNew(
   }
 
   try {
+    logger.startLoading('Copying template files...');
     await fs.copy(templateDir, targetDir);
-    logger.success('Project files created');
+    logger.stopLoading('Project files created');
 
     // Update package.json with project name
     const packageJsonPath = path.join(targetDir, 'package.json');
@@ -66,7 +67,7 @@ export async function handleNew(
       logger.debug('Updated package.json with project name');
     }
   } catch (error) {
-    logger.error('Failed to create project files');
+    logger.stopLoading('Failed to create project files', false);
     // Cleanup on failure
     if (await fs.pathExists(targetDir)) {
       await fs.remove(targetDir);
@@ -80,13 +81,15 @@ export async function handleNew(
     logger.debug('Running npm install...');
 
     try {
+      logger.startLoading('Installing packages...');
       await execa('npm', ['install'], {
         cwd: targetDir,
         stdio: options.verbose ? 'inherit' : 'pipe',
       });
-      logger.success('Dependencies installed');
+      logger.stopLoading('Dependencies installed');
     } catch (error) {
-      logger.warn('Failed to install dependencies. You can run "npm install" manually.');
+      logger.stopLoading('Failed to install dependencies', false);
+      logger.warn('You can run "npm install" manually.');
       logger.debug(String(error));
     }
   } else {

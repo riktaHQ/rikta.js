@@ -154,6 +154,7 @@ export async function handleBuild(options: BuildCommandOptions): Promise<void> {
   logger.debug(`npx tsc ${tscArgs.join(' ')}`);
 
   try {
+    logger.startLoading('Building project...');
     const result = await execa('npx', ['tsc', ...tscArgs], {
       cwd,
       stdio: options.verbose ? 'inherit' : 'pipe',
@@ -161,7 +162,7 @@ export async function handleBuild(options: BuildCommandOptions): Promise<void> {
     });
 
     if (result.exitCode !== 0) {
-      logger.error('TypeScript compilation failed');
+      logger.stopLoading('TypeScript compilation failed', false);
       if (!options.verbose && result.stderr) {
         console.error(result.stderr);
       }
@@ -172,9 +173,9 @@ export async function handleBuild(options: BuildCommandOptions): Promise<void> {
       process.exit(1);
     }
 
-    logger.success('TypeScript compilation complete');
+    logger.stopLoading('TypeScript compilation complete');
   } catch (error) {
-    logger.error('TypeScript compilation failed');
+    logger.stopLoading('TypeScript compilation failed', false);
     logger.debug(String(error));
     process.exit(1);
   }
@@ -219,30 +220,6 @@ export async function handleBuild(options: BuildCommandOptions): Promise<void> {
     if (optimizations.length > 0) {
       logger.info(`✨ Optimizations: ${optimizations.join(', ')}`);
     }
-
-    // Estimate deploy size
-    const nodeModulesPath = path.join(cwd, 'node_modules');
-    if (await fs.pathExists(nodeModulesPath)) {
-      logger.newLine();
-      logger.info('📦 Estimated deploy size:');
-
-      const nodeModulesSize = await getDirectorySizeBytes(nodeModulesPath);
-      const totalSize = distSizeBytes + nodeModulesSize;
-
-      logger.info(`   dist:         ${stats.distSize}`);
-      logger.info(`   node_modules: ${formatSize(nodeModulesSize)}`);
-      logger.info(`   ─────────────────────`);
-      logger.info(`   Total:        ${formatSize(totalSize)}`);
-    }
-
-    logger.newLine();
-    logger.info('🚀 Deploy commands:');
-    logger.newLine();
-    logger.info('  # Create deployment package');
-    logger.info(`  zip -r deploy.zip ${options.outDir} node_modules package.json`);
-    logger.newLine();
-    logger.info('  # Or use Docker');
-    logger.info('  docker build -t my-app .');
 
   } catch (error) {
     logger.debug(`Could not calculate build stats: ${error}`);

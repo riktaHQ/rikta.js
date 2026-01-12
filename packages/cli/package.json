@@ -1,6 +1,6 @@
 {
   "name": "@riktajs/cli",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "description": "CLI tool for Rikta framework - scaffold, develop and build projects",
   "type": "module",
   "main": "dist/index.js",
@@ -36,7 +36,8 @@
     "chalk": "^5.4.1",
     "commander": "^13.1.0",
     "execa": "^9.5.2",
-    "fs-extra": "^11.3.0"
+    "fs-extra": "^11.3.0",
+    "ora": "^8.1.1"
   },
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",
