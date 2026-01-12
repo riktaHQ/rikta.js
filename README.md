@@ -11,7 +11,7 @@ Build scalable APIs with the power of Fastify and the elegance of decorators. No
 
 ## 🤔 Why Rikta?
 
-Are you tired of **"Module Hell"** in NestJS? Do you miss the simplicity of Express but need the structure of a real framework?
+Do you miss the simplicity of Express but need the structure of a real framework?
 
 **Rikta** is designed for developers who want to move fast without breaking things.
 
