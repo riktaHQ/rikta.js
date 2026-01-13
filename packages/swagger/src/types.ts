@@ -1,12 +1,5 @@
 import type { ZodType } from 'zod';
 
-// ============================================================================
-// OpenAPI Schema Types
-// ============================================================================
-
-/**
- * OpenAPI 3.0 data types
- */
 export type OpenApiDataType = 
   | 'string' 
   | 'number' 
@@ -15,9 +8,6 @@ export type OpenApiDataType =
   | 'array' 
   | 'object';
 
-/**
- * OpenAPI 3.0 string formats
- */
 export type OpenApiFormat = 
   | 'int32' 
   | 'int64' 
@@ -35,9 +25,6 @@ export type OpenApiFormat =
   | 'ipv4' 
   | 'ipv6';
 
-/**
- * OpenAPI Schema Object (simplified)
- */
 export interface OpenApiSchemaObject {
   type?: OpenApiDataType;
   format?: string;
@@ -62,14 +49,8 @@ export interface OpenApiSchemaObject {
   additionalProperties?: boolean | OpenApiSchemaObject;
 }
 
-/**
- * OpenAPI Parameter Location
- */
 export type ParameterLocation = 'query' | 'path' | 'header' | 'cookie';
 
-/**
- * OpenAPI Parameter Object
- */
 export interface OpenApiParameterObject {
   name: string;
   in: ParameterLocation;
@@ -81,9 +62,6 @@ export interface OpenApiParameterObject {
   examples?: Record<string, { value: unknown; summary?: string }>;
 }
 
-/**
- * OpenAPI Request Body Object
- */
 export interface OpenApiRequestBodyObject {
   description?: string;
   required?: boolean;
@@ -109,14 +87,8 @@ export interface OpenApiResponseObject {
   }>;
 }
 
-/**
- * OpenAPI Security Requirement Object
- */
 export type OpenApiSecurityRequirement = Record<string, string[]>;
 
-/**
- * OpenAPI Security Scheme Object
- */
 export interface OpenApiSecurityScheme {
   type: 'apiKey' | 'http' | 'oauth2' | 'openIdConnect';
   description?: string;
@@ -146,9 +118,6 @@ export interface OpenApiSecurityScheme {
   openIdConnectUrl?: string;
 }
 
-/**
- * OpenAPI Operation Object
- */
 export interface OpenApiOperation {
   tags?: string[];
   summary?: string;
@@ -187,9 +156,6 @@ export interface OpenApiOperation {
   security?: Array<Record<string, string[]>>;
 }
 
-/**
- * OpenAPI Path Item Object
- */
 export interface OpenApiPathItem {
   get?: OpenApiOperation;
   put?: OpenApiOperation;
@@ -272,35 +238,17 @@ export interface OpenApiDocument {
   };
 }
 
-// ============================================================================
-// Decorator Options Types
-// ============================================================================
-
-/**
- * Options for @ApiOperation() decorator
- */
 export interface ApiOperationOptions {
-  /** Short summary of the operation */
   summary?: string;
-  /** Detailed description of the operation (supports Markdown) */
   description?: string;
-  /** Unique operation identifier */
   operationId?: string;
-  /** Mark operation as deprecated */
   deprecated?: boolean;
-  /** Tags for grouping operations */
   tags?: string[];
 }
 
-/**
- * Options for @ApiResponse() decorator
- */
 export interface ApiResponseOptions {
-  /** HTTP status code */
   status: number;
-  /** Description of the response */
   description?: string;
-  /** Response schema (Zod schema or OpenAPI schema) */
   schema?: ZodType<unknown> | OpenApiSchemaObject;
   /** Content type (default: application/json) */
   type?: string;

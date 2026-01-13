@@ -1,66 +1,8 @@
 /**
- * @riktajs/typeorm
- * 
- * TypeORM integration for Rikta Framework.
- * 
- * This package provides seamless TypeORM integration using Rikta's
- * lifecycle system and dependency injection container.
- * 
- * Features:
- * - Automatic DataSource initialization via OnProviderInit
- * - Automatic connection cleanup via OnProviderDestroy
- * - Injectable DataSource and EntityManager via @Autowired
- * - Environment-based configuration with Zod validation
- * - Support for multiple datasources
- * - Re-exported TypeORM decorators for convenience
- * 
- * @example
- * ```typescript
- * import { Injectable, Autowired } from '@riktajs/core';
- * import { 
- *   TYPEORM_DATA_SOURCE, 
- *   Entity, 
- *   Column, 
- *   PrimaryGeneratedColumn 
- * } from '@riktajs/typeorm';
- * import type { DataSource } from '@riktajs/typeorm';
- * 
- * @Entity()
- * class User {
- *   @PrimaryGeneratedColumn()
- *   id!: number;
- * 
- *   @Column()
- *   name!: string;
- * 
- *   @Column()
- *   email!: string;
- * }
- * 
- * @Injectable()
- * class UserService {
- *   @Autowired(TYPEORM_DATA_SOURCE)
- *   private dataSource!: DataSource;
- * 
- *   async findAll() {
- *     return this.dataSource.getRepository(User).find();
- *   }
- * 
- *   async create(name: string, email: string) {
- *     const user = new User();
- *     user.name = name;
- *     user.email = email;
- *     return this.dataSource.getRepository(User).save(user);
- *   }
- * }
- * ```
- * 
+ * TypeORM integration for Rikta with automatic lifecycle management,
+ * dependency injection, and Zod validation support.
  * @packageDocumentation
  */
-
-// ============================================================================
-// Injection Tokens
-// ============================================================================
 
 export { 
   TYPEORM_DATA_SOURCE, 
@@ -69,10 +11,6 @@ export {
   getDataSourceToken,
   getEntityManagerToken,
 } from './constants.js';
-
-// ============================================================================
-// Providers
-// ============================================================================
 
 export { 
   TypeOrmProvider, 
@@ -90,10 +28,6 @@ export {
 export type { 
   TypeOrmModuleOptions 
 } from './providers/typeorm.provider.js';
-
-// ============================================================================
-// Types
-// ============================================================================
 
 export type { 
   DatabaseType,
@@ -123,10 +57,6 @@ export type {
   TreeRepository,
   MongoRepository,
 } from 'typeorm';
-
-// ============================================================================
-// TypeORM Entity Decorators
-// ============================================================================
 
 export {
   // Entity decorators
@@ -185,10 +115,6 @@ export {
   TableInheritance,
   EntityRepository,
 } from 'typeorm';
-
-// ============================================================================
-// TypeORM Classes (for instanceof checks)
-// ============================================================================
 
 export {
   BaseEntity,

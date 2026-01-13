@@ -13,39 +13,19 @@ import type { ParamMetadata } from './decorators/param.decorator';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Constructor<T = unknown> = new (...args: any[]) => T;
 
-// ============================================================================
-// Controller Metadata
-// ============================================================================
-
-/**
- * Get controller metadata (path prefix, etc.)
- */
 export function getControllerMetadata(target: Constructor): ControllerMetadata | undefined {
   return Reflect.getMetadata(CONTROLLER_METADATA, target);
 }
 
-/**
- * Check if a class is a controller
- */
 export function isController(target: Constructor): boolean {
   return Reflect.hasMetadata(CONTROLLER_METADATA, target);
 }
 
-/**
- * Get controller path prefix
- */
 export function getControllerPath(target: Constructor): string {
   const meta = getControllerMetadata(target);
   return meta?.prefix ?? '';
 }
 
-// ============================================================================
-// Route Metadata
-// ============================================================================
-
-/**
- * Get all routes defined on a controller
- */
 export function getRoutes(target: Constructor): RouteDefinition[] {
   return Reflect.getMetadata(ROUTES_METADATA, target) || [];
 }
@@ -72,9 +52,6 @@ export function getParamMetadata(
   return Reflect.getMetadata(PARAM_METADATA, target.prototype, methodName) || [];
 }
 
-/**
- * Get parameter metadata by index
- */
 export function getParamMetadataByIndex(
   target: Constructor,
   methodName: string | symbol,
@@ -84,13 +61,6 @@ export function getParamMetadataByIndex(
   return params.find(p => p.index === paramIndex);
 }
 
-// ============================================================================
-// HTTP Code Metadata
-// ============================================================================
-
-/**
- * Get custom HTTP status code for a method
- */
 export function getHttpCode(
   target: Constructor,
   methodName: string | symbol
@@ -98,13 +68,6 @@ export function getHttpCode(
   return Reflect.getMetadata(HTTP_CODE_METADATA, target.prototype, methodName);
 }
 
-// ============================================================================
-// Guards Metadata
-// ============================================================================
-
-/**
- * Get guards for a controller or method
- */
 export function getGuards(
   target: Constructor,
   methodName?: string | symbol
@@ -120,13 +83,6 @@ export function getGuards(
   return Reflect.getMetadata(GUARDS_METADATA, target) || [];
 }
 
-// ============================================================================
-// Zod Schema Metadata
-// ============================================================================
-
-/**
- * Get Zod schema metadata for a method parameter
- */
 export function getZodSchema(
   target: Constructor,
   methodName: string | symbol
@@ -134,13 +90,6 @@ export function getZodSchema(
   return Reflect.getMetadata(ZOD_SCHEMA_METADATA, target.prototype, methodName);
 }
 
-// ============================================================================
-// Generic Metadata Access
-// ============================================================================
-
-/**
- * Get any metadata from a class
- */
 export function getClassMetadata<T = unknown>(
   metadataKey: symbol,
   target: Constructor
@@ -148,9 +97,6 @@ export function getClassMetadata<T = unknown>(
   return Reflect.getMetadata(metadataKey, target);
 }
 
-/**
- * Get any metadata from a method
- */
 export function getMethodMetadata<T = unknown>(
   metadataKey: symbol,
   target: Constructor,
@@ -159,9 +105,6 @@ export function getMethodMetadata<T = unknown>(
   return Reflect.getMetadata(metadataKey, target.prototype, methodName);
 }
 
-/**
- * Check if a class has specific metadata
- */
 export function hasClassMetadata(
   metadataKey: symbol,
   target: Constructor

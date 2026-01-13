@@ -1,27 +1,6 @@
 /**
- * TypeORM Provider
- * 
- * Manages TypeORM DataSource lifecycle using Rikta's provider system.
- * This provider handles:
- * - Creating and initializing TypeORM DataSource
- * - Registering DataSource and EntityManager in the DI container
- * - Graceful shutdown and connection cleanup
- * 
- * @example
- * ```typescript
- * // The provider is automatically initialized when your app starts.
- * // You can inject DataSource in your services:
- * 
- * @Injectable()
- * class UserRepository {
- *   @Autowired(TYPEORM_DATA_SOURCE)
- *   private dataSource!: DataSource;
- * 
- *   async findAll() {
- *     return this.dataSource.getRepository(User).find();
- *   }
- * }
- * ```
+ * Manages TypeORM DataSource lifecycle (initialization, registration, cleanup).
+ * Not @Injectable - use createTypeOrmProvider() to create and register.
  */
 
 import { DataSource, DataSourceOptions, EntityManager } from 'typeorm';
@@ -38,55 +17,26 @@ import {
 } from '../constants.js';
 import type { TypeOrmProviderOptions } from '../types.js';
 
-/**
- * TypeORM Provider
- * 
- * Manages the lifecycle of TypeORM DataSource instances.
- * Uses Rikta's lifecycle hooks to initialize on app start
- * and cleanup on app shutdown.
- * 
- * Note: This class is NOT decorated with @Injectable because it requires
- * programmatic configuration. Use createTypeOrmProvider() to create and
- * register an instance.
- */
 export class TypeOrmProvider implements OnProviderInit, OnProviderDestroy {
-  /**
-   * The TypeORM DataSource instance
-   */
   private dataSource!: DataSource;
 
-  /**
-   * Options for the provider
-   */
   private options: TypeOrmProviderOptions = {
     autoInitialize: true,
     retryAttempts: 0,
     retryDelay: 3000,
   };
 
-  /**
-   * Flag to track if connection was successfully initialized
-   */
   private initialized = false;
 
-  /**
-   * Connection name for multiple datasources support
-   */
   private connectionName: string = 'default';
 
-  /**
-   * Configure the provider with options
-   * 
-   * @param options - Configuration options
-   * @returns This instance for chaining
-   */
+  /** Configure the provider with options. Returns this for chaining. */
   configure(options: TypeOrmProviderOptions): this {
     this.options = {
       ...this.options,
       ...options,
     };
     
-    // Extract connection name from options
     if (options.dataSourceOptions && 'name' in options.dataSourceOptions) {
       this.connectionName = (options.dataSourceOptions as { name?: string }).name || 'default';
     }
@@ -94,34 +44,21 @@ export class TypeOrmProvider implements OnProviderInit, OnProviderDestroy {
     return this;
   }
   
-  /**
-   * Get the connection name
-   */
   getName(): string {
     return this.connectionName;
   }
 
-  /**
-   * Lifecycle hook: Initialize the database connection
-   * 
-   * Called by Rikta after the provider is instantiated.
-   * Creates the DataSource, initializes it, and registers
-   * the DataSource and EntityManager in the DI container.
-   */
+  /** Initialize database connection (called by Rikta). */
   async onProviderInit(): Promise<void> {
     console.log('🔌 TypeORM: Initializing database connection...');
 
     try {
-      // Build DataSource options
       const dataSourceOptions = this.buildDataSourceOptions();
       
-      // Create DataSource instance
       this.dataSource = new DataSource(dataSourceOptions);
 
-      // Initialize with retry support
       await this.initializeWithRetry();
 
-      // Register in DI container
       this.registerInContainer();
 
       this.initialized = true;
@@ -132,12 +69,7 @@ export class TypeOrmProvider implements OnProviderInit, OnProviderDestroy {
     }
   }
 
-  /**
-   * Lifecycle hook: Close the database connection
-   * 
-   * Called by Rikta during application shutdown.
-   * Ensures proper cleanup of database connections.
-   */
+  /** Close database connection (called by Rikta during shutdown). */
   async onProviderDestroy(): Promise<void> {
     if (!this.initialized || !this.dataSource?.isInitialized) {
       return;
@@ -151,16 +83,10 @@ export class TypeOrmProvider implements OnProviderInit, OnProviderDestroy {
       console.log('✅ TypeORM: Database connection closed');
     } catch (error) {
       console.error('❌ TypeORM: Error closing database connection:', error);
-      // Don't rethrow - we want shutdown to continue
     }
   }
 
-  /**
-   * Get the DataSource instance
-   * 
-   * @returns The TypeORM DataSource
-   * @throws Error if DataSource is not initialized
-   */
+  /** Get the DataSource instance. @throws Error if not initialized. */
   getDataSource(): DataSource {
     if (!this.dataSource?.isInitialized) {
       throw new Error('TypeORM DataSource is not initialized');
@@ -168,26 +94,15 @@ export class TypeOrmProvider implements OnProviderInit, OnProviderDestroy {
     return this.dataSource;
   }
 
-  /**
-   * Get the EntityManager instance
-   * 
-   * @returns The TypeORM EntityManager
-   * @throws Error if DataSource is not initialized
-   */
+  /** Get the EntityManager instance. @throws Error if not initialized. */
   getEntityManager(): EntityManager {
     return this.getDataSource().manager;
   }
 
-  /**
-   * Check if the connection is initialized
-   */
   isConnected(): boolean {
     return this.initialized && this.dataSource?.isInitialized;
   }
 
-  /**
-   * Build DataSource options from configuration
-   */
   private buildDataSourceOptions(): DataSourceOptions {
     if (!this.options.dataSourceOptions) {
       throw new Error(
@@ -199,9 +114,6 @@ export class TypeOrmProvider implements OnProviderInit, OnProviderDestroy {
     return this.options.dataSourceOptions;
   }
 
-  /**
-   * Initialize DataSource with retry support
-   */
   private async initializeWithRetry(): Promise<void> {
     const { retryAttempts = 0, retryDelay = 3000 } = this.options;
     let lastError: Error | undefined;
@@ -226,23 +138,16 @@ export class TypeOrmProvider implements OnProviderInit, OnProviderDestroy {
     throw lastError;
   }
 
-  /**
-   * Register DataSource and EntityManager in the DI container
-   */
   private registerInContainer(): void {
     const container = Container.getInstance();
     
-    // Get tokens for this connection name
     const dataSourceToken = getDataSourceToken(this.connectionName);
     const entityManagerToken = getEntityManagerToken(this.connectionName);
     
-    // Register DataSource
     container.registerValue(dataSourceToken, this.dataSource);
     
-    // Register EntityManager
     container.registerValue(entityManagerToken, this.dataSource.manager);
     
-    // Also register with default tokens if this is the default connection
     if (this.connectionName === 'default') {
       container.registerValue(TYPEORM_DATA_SOURCE, this.dataSource);
       container.registerValue(TYPEORM_ENTITY_MANAGER, this.dataSource.manager);
@@ -422,55 +327,12 @@ export function configureTypeOrm(
   return options;
 }
 
-// ============================================================================
-// Multiple DataSources Support
-// ============================================================================
-
-/**
- * Registry of all active TypeORM providers
- */
+/** Registry of all active TypeORM providers. */
 const providerRegistry = new Map<string, TypeOrmProvider>();
 
 /**
- * Create a named TypeORM provider for multiple database connections
- * 
- * Use this function when you need to connect to multiple databases.
- * Each provider manages its own DataSource and registers it with a unique token.
- * 
- * @param name - The unique name for this connection
- * @param options - DataSource options or provider options
- * @returns A configured TypeOrmProvider instance
- * 
- * @example
- * ```typescript
- * // Create providers for multiple databases
- * const mainDb = createNamedTypeOrmProvider('main', {
- *   type: 'postgres',
- *   host: 'main-db.example.com',
- *   database: 'main',
- *   entities: [User, Post],
- * });
- * 
- * const analyticsDb = createNamedTypeOrmProvider('analytics', {
- *   type: 'postgres',
- *   host: 'analytics-db.example.com',
- *   database: 'analytics',
- *   entities: [Event, Metric],
- * });
- * 
- * // Initialize both
- * await mainDb.onProviderInit();
- * await analyticsDb.onProviderInit();
- * 
- * // Inject using named tokens
- * import { getDataSourceToken } from '@riktajs/typeorm';
- * 
- * @Injectable()
- * class AnalyticsService {
- *   @Autowired(getDataSourceToken('analytics'))
- *   private analyticsDs!: DataSource;
- * }
- * ```
+ * Create a named TypeORM provider for multiple database connections.
+ * Each provider manages its own DataSource with a unique token.
  */
 export function createNamedTypeOrmProvider(
   name: string,

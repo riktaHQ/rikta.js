@@ -24,7 +24,6 @@ describe('New Command', () => {
   it('should create project directory with correct structure', async () => {
     const { handleNew } = await import('../src/commands/new.js');
 
-    // Mock process.exit to catch the call but not actually exit
     const exitSpy = vi.spyOn(process, 'exit').mockImplementation((() => {}) as never);
 
     await handleNew('test-project', {
@@ -35,17 +34,14 @@ describe('New Command', () => {
 
     const projectDir = path.join(tempDir, 'test-project');
 
-    // Check directory was created
     expect(await fs.pathExists(projectDir)).toBe(true);
 
-    // Check essential files exist
     expect(await fs.pathExists(path.join(projectDir, 'package.json'))).toBe(true);
     expect(await fs.pathExists(path.join(projectDir, 'tsconfig.json'))).toBe(true);
     expect(await fs.pathExists(path.join(projectDir, 'src', 'index.ts'))).toBe(true);
     expect(await fs.pathExists(path.join(projectDir, 'src', 'controllers', 'app.controller.ts'))).toBe(true);
     expect(await fs.pathExists(path.join(projectDir, 'src', 'services', 'greeting.service.ts'))).toBe(true);
 
-    // process.exit should not have been called
     expect(exitSpy).not.toHaveBeenCalled();
   });
 
@@ -87,7 +83,6 @@ describe('New Command', () => {
   it('should fail if directory already exists', async () => {
     const { handleNew } = await import('../src/commands/new.js');
 
-    // Create the directory first
     const existingDir = path.join(tempDir, 'existing-project');
     await fs.mkdir(existingDir);
 
@@ -99,7 +94,6 @@ describe('New Command', () => {
       verbose: false,
     });
 
-    // process.exit should have been called with 1
     expect(exitSpy).toHaveBeenCalledWith(1);
   });
 
@@ -114,7 +108,6 @@ describe('New Command', () => {
       verbose: false,
     });
 
-    // process.exit should have been called with 1
     expect(exitSpy).toHaveBeenCalledWith(1);
   });
 

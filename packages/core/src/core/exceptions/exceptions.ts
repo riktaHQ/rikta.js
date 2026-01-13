@@ -1,24 +1,6 @@
 import { HttpException, HttpExceptionBody } from './http-exception';
 
-// ============================================================================
-// 4xx Client Errors
-// ============================================================================
-
-/**
- * 400 Bad Request
- * 
- * The server cannot process the request due to client error.
- * 
- * @example
- * ```typescript
- * throw new BadRequestException('Invalid input data');
- * 
- * throw new BadRequestException({
- *   message: 'Validation failed',
- *   details: { email: 'Invalid format' }
- * });
- * ```
- */
+/** 400 Bad Request - server cannot process due to client error. */
 export class BadRequestException extends HttpException {
   constructor(response: string | HttpExceptionBody = 'Bad Request') {
     super(response, 400);
@@ -42,73 +24,35 @@ export class UnauthorizedException extends HttpException {
   }
 }
 
-/**
- * 403 Forbidden
- * 
- * The server understood the request but refuses to authorize it.
- * 
- * @example
- * ```typescript
- * throw new ForbiddenException('Access denied');
- * throw new ForbiddenException('Insufficient permissions');
- * ```
- */
+/** 403 Forbidden - server refuses to authorize. */
 export class ForbiddenException extends HttpException {
   constructor(response: string | HttpExceptionBody = 'Forbidden') {
     super(response, 403);
   }
 }
 
-/**
- * 404 Not Found
- * 
- * The requested resource could not be found.
- * 
- * @example
- * ```typescript
- * throw new NotFoundException('User not found');
- * throw new NotFoundException(`Resource ${id} not found`);
- * ```
- */
+/** 404 Not Found - requested resource not found. */
 export class NotFoundException extends HttpException {
   constructor(response: string | HttpExceptionBody = 'Not Found') {
     super(response, 404);
   }
 }
 
-/**
- * 405 Method Not Allowed
- * 
- * The request method is not supported for the requested resource.
- * 
- * @example
- * ```typescript
- * throw new MethodNotAllowedException('POST not allowed on this endpoint');
- * ```
- */
+/** 405 Method Not Allowed - request method not supported. */
 export class MethodNotAllowedException extends HttpException {
   constructor(response: string | HttpExceptionBody = 'Method Not Allowed') {
     super(response, 405);
   }
 }
 
-/**
- * 406 Not Acceptable
- * 
- * The requested resource is not capable of generating content acceptable
- * according to the Accept headers sent in the request.
- */
+/** 406 Not Acceptable - cannot generate acceptable content per Accept headers. */
 export class NotAcceptableException extends HttpException {
   constructor(response: string | HttpExceptionBody = 'Not Acceptable') {
     super(response, 406);
   }
 }
 
-/**
- * 408 Request Timeout
- * 
- * The server timed out waiting for the request.
- */
+/** 408 Request Timeout - server timed out waiting for request. */
 export class RequestTimeoutException extends HttpException {
   constructor(response: string | HttpExceptionBody = 'Request Timeout') {
     super(response, 408);

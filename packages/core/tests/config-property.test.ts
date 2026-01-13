@@ -356,8 +356,7 @@ describe('@ConfigProperty Decorator', () => {
       }
 
       const mappings = getConfigPropertyMappings(TestConfig);
-      // All caps will be converted to A_P_I, which is expected behavior
-      // Users should use custom mapping for acronyms: @ConfigProperty('API')
+      // All caps converted to A_P_I - use @ConfigProperty('API') for acronyms
       expect(mappings[0].envKey).toBe('A_P_I');
     });
   });
@@ -374,7 +373,6 @@ describe('@ConfigProperty Decorator', () => {
         cachedProperty!: string;
       }
 
-      // Both should use cached conversion
       const mappings1 = getConfigPropertyMappings(TestConfig1);
       const mappings2 = getConfigPropertyMappings(TestConfig2);
 
@@ -391,7 +389,6 @@ describe('@ConfigProperty Decorator', () => {
       getConfigPropertyMappings(TestConfig);
       clearPropertyNameCache();
 
-      // Should still work after cache clear
       const mappings = getConfigPropertyMappings(TestConfig);
       expect(mappings[0].envKey).toBe('TEST_PROP');
     });

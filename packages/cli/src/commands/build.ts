@@ -27,7 +27,6 @@ async function getDirectorySizeBytes(dir: string): Promise<number> {
         totalSize += stat.size;
       }
     } catch {
-      // Ignore errors (e.g., permission denied)
     }
   }
 
@@ -59,7 +58,6 @@ async function countFiles(dir: string, extension = '.js'): Promise<number> {
         count++;
       }
     } catch {
-      // Ignore errors
     }
   }
 
@@ -71,13 +69,12 @@ async function countFiles(dir: string, extension = '.js'): Promise<number> {
 }
 
 async function findTsConfig(cwd: string): Promise<string> {
-  // Check for tsconfig.build.json first (dedicated build config)
+  // tsconfig.build.json takes precedence over tsconfig.json
   const buildConfig = path.join(cwd, 'tsconfig.build.json');
   if (await fs.pathExists(buildConfig)) {
     return 'tsconfig.build.json';
   }
 
-  // Fall back to default tsconfig.json
   return 'tsconfig.json';
 }
 
@@ -92,7 +89,6 @@ export async function handleBuild(options: BuildCommandOptions): Promise<void> {
   logger.tagline('Building Rikta project...');
   logger.newLine();
 
-  // Verify we're in a Rikta project
   logger.step(1, 5, 'Checking project...');
   if (!await isRiktaProject(cwd)) {
     logger.error('This command must be run from a Rikta project directory.');
@@ -101,7 +97,6 @@ export async function handleBuild(options: BuildCommandOptions): Promise<void> {
   }
   logger.success('Rikta project detected');
 
-  // Find tsconfig
   logger.step(2, 5, 'Detecting TypeScript configuration...');
   const tsConfigFile = await findTsConfig(cwd);
   logger.debug(`Using: ${tsConfigFile}`);
@@ -112,7 +107,6 @@ export async function handleBuild(options: BuildCommandOptions): Promise<void> {
     logger.success('Using tsconfig.json');
   }
 
-  // Clean output folder
   if (options.clean) {
     logger.step(3, 5, `Cleaning ${options.outDir} folder...`);
     logger.debug(`Removing ${distPath}`);
@@ -132,17 +126,14 @@ export async function handleBuild(options: BuildCommandOptions): Promise<void> {
     logger.step(3, 5, 'Skipping clean (--no-clean)');
   }
 
-  // Build with TypeScript
   logger.step(4, 5, 'Compiling TypeScript...');
 
   const tscArgs: string[] = ['-p', tsConfigFile];
 
-  // Override outDir if specified differently than tsconfig
   if (options.outDir !== 'dist') {
     tscArgs.push('--outDir', options.outDir);
   }
 
-  // Add build optimizations for serverless
   if (!options.sourcemap) {
     tscArgs.push('--sourceMap', 'false', '--declarationMap', 'false');
   }

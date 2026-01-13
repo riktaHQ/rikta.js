@@ -64,7 +64,6 @@ function killServer(): Promise<void> {
       isRestarting = true;
       serverProcess.kill('SIGTERM');
 
-      // Give it a moment to terminate gracefully
       setTimeout(() => {
         if (serverProcess) {
           serverProcess.kill('SIGKILL');
@@ -85,7 +84,6 @@ async function restartServer(distPath: string, port: string | undefined, host: s
   logger.info('🔄 Restarting server...');
   await killServer();
 
-  // Small delay to ensure port is released
   await new Promise((resolve) => setTimeout(resolve, 300));
 
   const actualPort = port || process.env.PORT || '3000';
@@ -104,7 +102,6 @@ export async function handleDev(options: DevCommandOptions): Promise<void> {
   logger.tagline('Developer Server starting...');
   logger.newLine();
 
-  // Verify we're in a Rikta project
   logger.step(1, 4, 'Checking project...');
   if (!await isRiktaProject(cwd)) {
     logger.error('This command must be run from a Rikta project directory.');
@@ -113,7 +110,6 @@ export async function handleDev(options: DevCommandOptions): Promise<void> {
   }
   logger.success('Rikta project detected');
 
-  // Check for node_modules
   logger.step(2, 4, 'Checking dependencies...');
   if (!await checkNodeModules(cwd)) {
     logger.warn('node_modules not found. Running npm install...');
@@ -131,7 +127,6 @@ export async function handleDev(options: DevCommandOptions): Promise<void> {
     logger.success('Dependencies found');
   }
 
-  // Start TypeScript compiler
   logger.step(3, 4, 'Starting TypeScript compiler...');
   logger.debug(`Watch mode: ${options.watch}`);
 
@@ -150,7 +145,6 @@ export async function handleDev(options: DevCommandOptions): Promise<void> {
         stderr: 'pipe',
       });
 
-      // Handle graceful shutdown
       const cleanup = async () => {
         logger.newLine();
         logger.info('Shutting down...');
@@ -164,7 +158,6 @@ export async function handleDev(options: DevCommandOptions): Promise<void> {
       process.on('SIGINT', cleanup);
       process.on('SIGTERM', cleanup);
 
-      // Monitor tsc output to detect compilation completion
       if (tscProcess.stdout) {
         tscProcess.stdout.on('data', async (data: Buffer) => {
           const output = data.toString();
@@ -178,12 +171,10 @@ export async function handleDev(options: DevCommandOptions): Promise<void> {
             compilationCount++;
 
             if (!serverStarted) {
-              // First compilation - start server
               const actualPort = options.port || process.env.PORT || '3000';
               const actualHost = options.host || process.env.HOST || '0.0.0.0';
               logger.step(4, 4, `Starting server on port ${actualPort}...`);
 
-              // Wait for dist/index.js to exist
               const distReady = await waitForDistFolder(distPath, 15000);
               if (!distReady) {
                 logger.error('Compilation seems complete but dist/index.js not found');
@@ -198,16 +189,13 @@ export async function handleDev(options: DevCommandOptions): Promise<void> {
               logger.newLine();
               logger.info('👀 Watching for file changes... (Ctrl+C to stop)');
             } else {
-              // Subsequent compilations - restart server
               logger.debug(`Compilation #${compilationCount} complete`);
               await restartServer(distPath, options.port, options.host, options.verbose);
             }
           }
 
-          // Show compilation errors
           if (output.includes('error TS') || output.includes('Found') && output.includes('error')) {
             if (!options.verbose) {
-              // Only show errors if not in verbose mode (in verbose mode they're already shown)
               process.stdout.write(output);
             }
           }
@@ -223,11 +211,9 @@ export async function handleDev(options: DevCommandOptions): Promise<void> {
         });
       }
 
-      // Keep process running
       await tscProcess;
 
     } else {
-      // Non-watch mode: compile once, then start
       const tscProcess = execa('npx', ['tsc'], {
         cwd,
         stdio: options.verbose ? 'inherit' : 'pipe',
@@ -252,13 +238,11 @@ export async function handleDev(options: DevCommandOptions): Promise<void> {
       if (options.port) env.PORT = options.port;
       if (options.host) env.HOST = options.host;
 
-      // Start server and wait for it
       serverProcess = execa('node', [path.join(distPath, 'index.js')], {
         env,
         stdio: 'inherit',
       });
 
-      // Handle graceful shutdown
       process.on('SIGINT', async () => {
         logger.newLine();
         logger.info('Shutting down...');

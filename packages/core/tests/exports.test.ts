@@ -1,11 +1,8 @@
 import { describe, it, expect } from 'vitest';
 
-// Import everything from the main entry point as users would
 import {
-  // Zod exports
   z,
   
-  // Decorators
   Controller,
   Injectable,
   Get,
@@ -20,22 +17,18 @@ import {
   Autowired,
   HttpCode,
   
-  // Exceptions
   HttpException,
   ValidationException,
   BadRequestException,
   NotFoundException,
   UnauthorizedException,
   
-  // Application
   Rikta,
   RiktaFactory,
   
-  // Container
   Container,
   InjectionToken,
   
-  // Types
   type ParamMetadata,
   type ValidationErrorDetails,
 } from '../src';
@@ -113,7 +106,7 @@ describe('Package Exports', () => {
     it('should export Rikta and RiktaFactory', () => {
       expect(Rikta).toBeDefined();
       expect(RiktaFactory).toBeDefined();
-      expect(Rikta).toBe(RiktaFactory); // Should be the same
+      expect(Rikta).toBe(RiktaFactory);
     });
   });
 
@@ -129,7 +122,6 @@ describe('Package Exports', () => {
 
   describe('Type exports', () => {
     it('should be able to use ParamMetadata type', () => {
-      // This is a compile-time check
       const metadata: ParamMetadata = {
         index: 0,
         type: 'body' as any,
@@ -138,7 +130,6 @@ describe('Package Exports', () => {
     });
 
     it('should be able to use ValidationErrorDetails type', () => {
-      // This is a compile-time check
       const error: ValidationErrorDetails = {
         path: ['name'],
         message: 'Required',
@@ -150,23 +141,16 @@ describe('Package Exports', () => {
 
   describe('Integration: Zod with decorators', () => {
     it('should work together for type-safe validation', () => {
-      // Define schema using exported z
       const CreateUserSchema = z.object({
         name: z.string().min(1),
         email: z.string().email(),
       });
 
-      // Type inference works
       type CreateUser = z.infer<typeof CreateUserSchema>;
 
-      // Validation works
       const validData: CreateUser = { name: 'John', email: 'john@example.com' };
       const result = CreateUserSchema.safeParse(validData);
       expect(result.success).toBe(true);
-
-      // This is how users would use it:
-      // @Post()
-      // create(@Body(CreateUserSchema) data: CreateUser) { ... }
     });
   });
 });

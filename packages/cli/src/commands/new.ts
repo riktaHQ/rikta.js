@@ -20,7 +20,6 @@ export async function handleNew(
   logger.tagline('Making TypeScript services simple (and fast) again');
   logger.newLine();
 
-  // Step 1: Validate project name
   logger.step(1, 4, 'Validating project name...');
   logger.debug(`Project name: ${projectName}`);
 
@@ -31,7 +30,6 @@ export async function handleNew(
   }
   logger.success(`Project name "${projectName}" is valid`);
 
-  // Step 2: Check if directory exists
   logger.step(2, 4, 'Checking target directory...');
   const targetDir = path.resolve(process.cwd(), projectName);
   logger.debug(`Target directory: ${targetDir}`);
@@ -42,7 +40,6 @@ export async function handleNew(
   }
   logger.success('Target directory is available');
 
-  // Step 3: Copy template
   logger.step(3, 4, 'Creating project from template...');
   const templateDir = path.resolve(__dirname, '../../templates', options.template);
   logger.debug(`Template directory: ${templateDir}`);
@@ -57,7 +54,6 @@ export async function handleNew(
     await fs.copy(templateDir, targetDir);
     logger.stopLoading('Project files created');
 
-    // Update package.json with project name
     const packageJsonPath = path.join(targetDir, 'package.json');
     if (await fs.pathExists(packageJsonPath)) {
       const packageJson = await fs.readJson(packageJsonPath);
@@ -68,14 +64,12 @@ export async function handleNew(
     }
   } catch (error) {
     logger.stopLoading('Failed to create project files', false);
-    // Cleanup on failure
     if (await fs.pathExists(targetDir)) {
       await fs.remove(targetDir);
     }
     throw error;
   }
 
-  // Step 4: Install dependencies (optional)
   if (!options.skipInstall) {
     logger.step(4, 4, 'Installing dependencies...');
     logger.debug('Running npm install...');
@@ -97,7 +91,6 @@ export async function handleNew(
     logger.debug('Skipped npm install as requested');
   }
 
-  // Success message
   logger.newLine();
   logger.success(`Project "${projectName}" created successfully!`);
   logger.newLine();

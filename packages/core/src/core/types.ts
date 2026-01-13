@@ -1,24 +1,10 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import {Container} from "@rikta/core/container";
 
-// ============================================================================
-// Core Types
-// ============================================================================
-
-/**
- * Constructor type for class instantiation
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Constructor<T = any> = new (...args: any[]) => T;
 
-/**
- * HTTP methods supported by the framework
- */
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'OPTIONS' | 'HEAD';
 
-/**
- * Route handler context
- */
 export interface RouteContext {
   request: FastifyRequest;
   reply: FastifyReply;
