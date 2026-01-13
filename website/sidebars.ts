@@ -36,6 +36,7 @@ const sidebars: SidebarsConfig = {
         'techniques/error-handling',
         'techniques/guards',
         'techniques/logging',
+        'techniques/queues'
       ],
     },
     {
