@@ -96,6 +96,7 @@ export class GreetingService {
 | [@riktajs/cli](./packages/cli) | CLI for scaffolding and development | [![npm](https://img.shields.io/npm/v/@riktajs/cli)](https://www.npmjs.com/package/@riktajs/cli) |
 | [@riktajs/swagger](./packages/swagger) | OpenAPI/Swagger documentation | [![npm](https://img.shields.io/npm/v/@riktajs/swagger)](https://www.npmjs.com/package/@riktajs/swagger) |
 | [@riktajs/typeorm](./packages/typeorm) | TypeORM integration | [![npm](https://img.shields.io/npm/v/@riktajs/typeorm)](https://www.npmjs.com/package/@riktajs/typeorm) |
+| [@riktajs/queue](./packages/queue) | BullMQ-based job queue integration for Rikta | [![npm](https://img.shields.io/npm/v/@riktajs/queue)](https://www.npmjs.com/package/@riktajs/queue) |
 
 ---
 
