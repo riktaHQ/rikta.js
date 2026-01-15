@@ -1,0 +1,9 @@
+{
+  "label": "MCP (Model Context Protocol)",
+  "position": 6,
+  "collapsed": false,
+  "link": {
+    "type": "generated-index",
+    "description": "Integrate your Rikta application with AI assistants like Claude and GPT using the Model Context Protocol (MCP)."
+  }
+}
