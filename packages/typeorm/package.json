@@ -1,6 +1,6 @@
 {
   "name": "@riktajs/typeorm",
-  "version": "0.1.11",
+  "version": "0.2.0",
   "description": "TypeORM integration for Rikta Framework with lifecycle-based connection management",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -32,7 +32,7 @@
   "author": "",
   "license": "MIT",
   "peerDependencies": {
-    "@riktajs/core": ">=0.4.3",
+    "@riktajs/core": ">=0.5.0",
     "reflect-metadata": ">=0.2.0",
     "typeorm": ">=0.3.0"
   },
