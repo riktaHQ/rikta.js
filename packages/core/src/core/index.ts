@@ -18,3 +18,7 @@ export * from './metadata';
 // import { z, Body, Controller } from '@riktajs/core';
 export { z } from 'zod';
 export type { ZodType, ZodSchema, ZodError, ZodIssue, infer as ZodInfer } from 'zod';
+
+// Re-export Fastify types for convenience
+// This allows users to import Fastify types directly from '@riktajs/core':
+export type {FastifyInstance, FastifyRequest, FastifyReply} from 'fastify';

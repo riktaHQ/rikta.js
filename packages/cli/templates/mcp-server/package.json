@@ -18,11 +18,11 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@riktajs/core": "^0.4.6",
+    "@riktajs/core": "^0.4.7",
     "@riktajs/mcp": "^0.2.0"
   },
   "devDependencies": {
-    "@riktajs/cli": "^0.2.0",
+    "@riktajs/cli": "^0.2.2",
     "@types/node": "^22.10.2",
     "typescript": "^5.7.2"
   },

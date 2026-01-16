@@ -1,4 +1,4 @@
-import {Controller, Get, Autowired} from '@riktajs/core';
+import {Controller, Get, Autowired, Req, RouteContext} from '@riktajs/core';
 import {ApiTags, ApiOperation, ApiResponse} from '@riktajs/swagger';
 import {HealthService, HealthStatus} from '../services/health.service';
 import {APP_CONFIG} from '../config/app.config';
@@ -23,7 +23,7 @@ export class AppController {
   @Get()
   @ApiOperation({ summary: 'Get application info', description: 'Returns basic application information and available endpoints' })
   @ApiResponse({ status: 200, description: 'Application information' })
-  getInfo() {
+  getInfo(@Req() request: Req): any {
     return {
       name: this.config.name,
       version: this.config.version,

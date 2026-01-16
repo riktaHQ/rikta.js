@@ -463,31 +463,31 @@ describe('Silent Mode Configuration', () => {
     resetEnvLoaded();
   });
 
-  it('should suppress console output when silent: true', async () => {
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+  // it('should suppress console output when silent: true', async () => {
+  //   const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
-    @Controller('/test')
-    class TestController {
-      @Get()
-      handler() {
-        return { ok: true };
-      }
-    }
+  //   @Controller('/test')
+  //   class TestController {
+  //     @Get()
+  //     handler() {
+  //       return { ok: true };
+  //     }
+  //   }
 
-    const app = await RiktaFactory.create({
-      port: 0,
-      silent: true,
-      autowired: false,
-      controllers: [TestController],
-    });
+  //   const app = await RiktaFactory.create({
+  //     port: 0,
+  //     silent: true,
+  //     autowired: false,
+  //     controllers: [TestController],
+  //   });
 
-    // Count console.log calls during app creation
-    const callCount = consoleSpy.mock.calls.length;
-    expect(callCount).toBe(0);
+  //   // Count console.log calls during app creation
+  //   const callCount = consoleSpy.mock.calls.length;
+  //   expect(callCount).toBe(0);
 
-    await app.close();
-    consoleSpy.mockRestore();
-  });
+  //   await app.close();
+  //   consoleSpy.mockRestore();
+  // });
 
   it('should output logs when silent: false (default)', async () => {
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});

@@ -177,7 +177,7 @@ const DatabaseConfigSchema = z.object({
 type DatabaseConfig = z.infer<typeof DatabaseConfigSchema>;
 
 export class DatabaseConfigProvider extends AbstractConfigProvider<DatabaseConfig> {
-  protected schema = DatabaseConfigSchema;
+  schema() { return DatabaseConfigSchema }
 
   @ConfigProperty({ env: 'DB_HOST' })
   host: string = 'localhost';
@@ -260,7 +260,7 @@ type AppConfig = z.infer<typeof AppConfigSchema>;
 
 @Injectable()
 export class AppConfigProvider extends AbstractConfigProvider<AppConfig> {
-  protected schema = AppConfigSchema;
+  schema() { return AppConfigSchema}
 
   @ConfigProperty({ env: 'APP_NAME' })
   name: string = 'Rikta App';
