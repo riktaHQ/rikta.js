@@ -1,0 +1,37 @@
+{
+  "name": "rikta-queue-demo",
+  "version": "1.0.0",
+  "description": "Queue demo project for @riktajs/queue",
+  "main": "dist/main.js",
+  "types": "dist/main.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node-dev --respawn src/main.ts",
+    "start": "node dist/main.js"
+  },
+  "keywords": [
+    "rikta",
+    "queue",
+    "bullmq",
+    "redis",
+    "typescript"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@riktajs/core": "*",
+    "@riktajs/queue": "*",
+    "bullmq": "^5.34.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

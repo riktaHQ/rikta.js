@@ -4,16 +4,13 @@
 
 import type { RedisConnectionOptions } from '../types.js';
 import type { Redis, Cluster } from 'ioredis';
+import IORedis from 'ioredis';
 
 /**
  * Create a Redis client based on configuration
  * @param config - Redis connection options
  */
 export function createRedisClient(config: RedisConnectionOptions): Redis | Cluster {
-  // Dynamic import to avoid bundling issues
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const IORedis = require('ioredis').default || require('ioredis');
-
   if (config.cluster?.nodes) {
     // Cluster mode
     return new IORedis.Cluster(config.cluster.nodes, {
@@ -25,7 +22,7 @@ export function createRedisClient(config: RedisConnectionOptions): Redis | Clust
   }
 
   // Single node mode
-  return new IORedis({
+  return new (IORedis as unknown as new (options: object) => Redis)({
     host: config.host || 'localhost',
     port: config.port || 6379,
     password: config.password,
@@ -33,7 +30,7 @@ export function createRedisClient(config: RedisConnectionOptions): Redis | Clust
     db: config.db || 0,
     maxRetriesPerRequest: null, // Required for BullMQ
     enableReadyCheck: false,
-  }) as Redis;
+  });
 }
 
 /**

@@ -94,6 +94,7 @@ const queueProvider = createQueueProvider({
 
 // Register processors
 queueProvider.registerProcessors(EmailProcessor);
+await queueProvider.onProviderInit();
 
 // Bootstrap application
 const app = await Rikta.create();
@@ -103,11 +104,11 @@ const app = await Rikta.create();
 
 ```typescript
 import { Injectable, Autowired } from '@riktajs/core';
-import { QueueService } from '@riktajs/queue';
+import { QueueService, QUEUE_SERVICE } from '@riktajs/queue';
 
 @Injectable()
 export class NotificationService {
-  @Autowired()
+  @Autowired(QUEUE_SERVICE)
   private queueService!: QueueService;
 
   async sendWelcomeEmail(userEmail: string) {

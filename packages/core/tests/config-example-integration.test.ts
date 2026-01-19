@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { writeFileSync, unlinkSync, existsSync } from 'fs';
 import { resolve } from 'path';
-import { AppConfigProvider, APP_CONFIG } from '../../example/src/config/app-config.provider';
-import { DatabaseConfigProvider, DATABASE_CONFIG } from '../../example/src/config/database-config.provider';
+import { AppConfigProvider, APP_CONFIG } from '../../examples/example/src/config/app-config.provider';
+import { DatabaseConfigProvider, DATABASE_CONFIG } from '../../examples/example/src/config/database-config.provider';
 import { resetEnvLoaded } from '../src/core/config/env-loader';
 import 'reflect-metadata';
 

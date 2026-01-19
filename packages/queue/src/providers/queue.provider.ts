@@ -6,6 +6,7 @@
  */
 
 import type { OnProviderInit, OnProviderDestroy } from '@riktajs/core';
+import { Container } from '@riktajs/core';
 import { Queue, Worker, QueueEvents } from 'bullmq';
 import { 
   QUEUE_PROVIDER, 
@@ -375,9 +376,6 @@ export class QueueProvider implements OnProviderInit, OnProviderDestroy {
 
   private registerInContainer(): void {
     try {
-      // Dynamic import to avoid circular dependency
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { Container } = require('@riktajs/core');
       const container = Container.getInstance();
 
       // Register provider
@@ -396,8 +394,11 @@ export class QueueProvider implements OnProviderInit, OnProviderDestroy {
       // Create and register QueueService
       const queueService = new QueueService(this);
       container.registerValue(QUEUE_SERVICE, queueService);
-    } catch {
+      
+      console.log('  ✅ QueueService registered in container');
+    } catch (error) {
       // Container not available, skip registration
+      console.warn('  ⚠️ Could not register in container:', (error as Error).message);
     }
   }
 

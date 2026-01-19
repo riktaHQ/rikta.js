@@ -23,7 +23,7 @@ export class AppController {
   @Get()
   @ApiOperation({ summary: 'Get application info', description: 'Returns basic application information and available endpoints' })
   @ApiResponse({ status: 200, description: 'Application information' })
-  getInfo(@Req() request: Req): any {
+  getInfo(): any {
     return {
       name: this.config.name,
       version: this.config.version,

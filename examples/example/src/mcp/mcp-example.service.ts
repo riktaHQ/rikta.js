@@ -4,8 +4,8 @@
  * Demonstrates how to use @MCPTool, @MCPResource, and @MCPPrompt decorators
  * to expose your services to AI assistants via Model Context Protocol.
  */
-import { Injectable } from '@riktajs/core';
-import { MCPTool, MCPResource, MCPPrompt, z } from '@riktajs/mcp';
+import { Injectable, z } from '@riktajs/core';
+import { MCPTool, MCPResource, MCPPrompt} from '@riktajs/mcp';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 
