@@ -439,6 +439,87 @@ Initialize the TypeORM connection.
 function initializeTypeOrm(options: DataSourceOptions): Promise<DataSource>;
 ```
 
+## Queue Integration
+
+### @Processor()
+
+Marks a class as a job processor for a specific queue. Supports full dependency injection via `@Autowired`.
+
+```typescript
+@Processor(queueName: string, options?: ProcessorOptions)
+```
+
+**Options:**
+- `concurrency`: Number of concurrent jobs (default: `1`)
+- `rateLimiter`: Rate limiting options `{ max: number, duration: number }`
+
+**Example:**
+```typescript
+@Processor('email-queue', { concurrency: 5 })
+export class EmailProcessor {
+  @Autowired(MailerService)
+  private mailer!: MailerService;
+}
+```
+
+### @Process()
+
+Marks a method as a job handler.
+
+```typescript
+@Process(jobName?: string)
+```
+
+**Example:**
+```typescript
+@Process('send-email')
+async handleSendEmail(job: Job) {}
+
+@Process() // Uses method name as job name
+async processOrder(job: Job) {}
+```
+
+### Event Decorators
+
+```typescript
+@OnJobComplete()    // (job: Job, result: unknown) => void
+@OnJobFailed()      // (job: Job | undefined, error: Error) => void
+@OnJobProgress()    // (job: Job, progress: number | object) => void
+@OnJobStalled()     // (jobId: string) => void
+@OnWorkerReady()    // () => void
+@OnWorkerError()    // (error: Error) => void
+```
+
+### QueueService
+
+Service for adding jobs to queues.
+
+```typescript
+class QueueService {
+  addJob<T>(queueName: string, jobName: string, data: T, options?: JobOptions): Promise<Job>;
+  addJobs<T>(queueName: string, jobs: Array<{ name: string; data: T }>): Promise<Job[]>;
+  addDelayedJob<T>(queueName: string, jobName: string, data: T, delay: number): Promise<Job>;
+  addRepeatableJob<T>(queueName: string, jobName: string, data: T, repeat: RepeatOptions): Promise<Job>;
+  getJob(queueName: string, jobId: string): Promise<Job | undefined>;
+  getQueueStats(queueName: string): Promise<QueueStats>;
+  pauseQueue(queueName: string): Promise<void>;
+  resumeQueue(queueName: string): Promise<void>;
+  clearQueue(queueName: string, status?: JobStatus): Promise<void>;
+  getQueueNames(): string[];
+}
+```
+
+**Injection:**
+```typescript
+import { QUEUE_SERVICE, QueueService } from '@riktajs/queue';
+
+@Injectable()
+export class MyService {
+  @Autowired(QUEUE_SERVICE)
+  private queueService!: QueueService;
+}
+```
+
 ## Swagger Integration
 
 ### setupSwagger()

@@ -21,19 +21,43 @@ npm run dev
 
 1. **Processors** - Classes that handle jobs from specific queues
    - `EmailProcessor` - Handles email sending jobs
-   - `TaskProcessor` - Handles background tasks with progress updates
+   - `TaskProcessor` - Handles background tasks with progress updates and **@Autowired dependency injection**
 
 2. **Services** - Inject `QueueService` to add jobs
    - `NotificationService` - Sends emails via queue
    - `TaskService` - Manages background tasks
+   - `LoggerService` - Injectable logging service used in processors
 
 3. **Features Demonstrated**
    - `@Processor` and `@Process` decorators
    - Job lifecycle events (`@OnJobComplete`, `@OnJobFailed`, `@OnWorkerReady`)
+   - **`@Autowired` dependency injection inside processors**
    - Progress updates for long-running jobs
    - Delayed job scheduling
    - Bulk job submission
    - Queue statistics
+
+## Dependency Injection in Processors
+
+Processors support `@Autowired` for injecting services:
+
+```typescript
+import { Autowired } from '@riktajs/core';
+import { Processor, Process } from '@riktajs/queue';
+import { LoggerService } from '../services/logger.service.js';
+
+@Processor('task-queue')
+export class TaskProcessor {
+  @Autowired(LoggerService)
+  private logger!: LoggerService;
+
+  @Process('my-job')
+  async handleJob(job: Job) {
+    this.logger.info(`Processing job ${job.id}`);
+    // ...
+  }
+}
+```
 
 ## Project Structure
 
@@ -43,12 +67,11 @@ queue-demo/
 │   ├── main.ts                 # Application bootstrap
 │   ├── processors/
 │   │   ├── email.processor.ts  # Email queue processor
-│   │   ├── task.processor.ts   # Task queue processor
-│   │   └── index.ts
+│   │   └── task.processor.ts   # Task queue processor (with DI)
 │   └── services/
 │       ├── notification.service.ts  # Email job submission
 │       ├── task.service.ts          # Task job submission
-│       └── index.ts
+│       └── logger.service.ts        # Injectable logging service
 ├── package.json
 ├── tsconfig.json
 └── README.md

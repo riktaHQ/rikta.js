@@ -6,7 +6,8 @@ BullMQ-based job queue integration for Rikta Framework with lifecycle management
 
 - 🚀 **High Performance** - Built on BullMQ for distributed job processing
 - 🎯 **Decorator-based API** - `@Processor`, `@Process`, `@OnJobComplete`, etc.
-- 🔄 **Lifecycle Integration** - Seamless integration with Rikta's lifecycle hooks
+- � **Full DI Support** - `@Autowired` works in processors for service injection
+- �🔄 **Lifecycle Integration** - Seamless integration with Rikta's lifecycle hooks
 - 📡 **Event System** - Queue events emitted via Rikta's EventBus
 - ⚡ **Connection Pooling** - Shared Redis connections for optimal performance
 - 📊 **Optional Monitoring** - Bull Board integration (bring your own dependency)
@@ -31,7 +32,10 @@ npm install @bull-board/api @bull-board/fastify
 
 ### 1. Create a Processor
 
+Processors support **dependency injection** via `@Autowired`:
+
 ```typescript
+import { Autowired } from '@riktajs/core';
 import { Processor, Process, OnJobComplete, OnJobFailed } from '@riktajs/queue';
 import { Job } from 'bullmq';
 
@@ -43,12 +47,19 @@ interface EmailJobData {
 
 @Processor('email-queue', { concurrency: 5 })
 class EmailProcessor {
+  // Inject services using @Autowired - fully supported!
+  @Autowired(MailerService)
+  private mailer!: MailerService;
+
+  @Autowired(LoggerService)
+  private logger!: LoggerService;
+
   @Process('send')
   async handleSendEmail(job: Job<EmailJobData>) {
-    console.log(`📧 Sending email to ${job.data.to}`);
+    this.logger.info(`📧 Sending email to ${job.data.to}`);
     
-    // Your email sending logic here
-    await this.sendEmail(job.data);
+    // Use injected services
+    await this.mailer.send(job.data);
     
     return { sent: true, messageId: `msg-${job.id}` };
   }
@@ -56,7 +67,7 @@ class EmailProcessor {
   @Process('bulk-send')
   async handleBulkSend(job: Job<{ emails: EmailJobData[] }>) {
     for (const email of job.data.emails) {
-      await this.sendEmail(email);
+      await this.mailer.send(email);
       await job.updateProgress(/* calculate progress */);
     }
     return { sent: job.data.emails.length };
@@ -64,16 +75,12 @@ class EmailProcessor {
 
   @OnJobComplete()
   async onComplete(job: Job, result: unknown) {
-    console.log(`✅ Job ${job.id} completed:`, result);
+    this.logger.info(`✅ Job ${job.id} completed:`, result);
   }
 
   @OnJobFailed()
   async onFailed(job: Job | undefined, error: Error) {
-    console.error(`❌ Job ${job?.id} failed:`, error.message);
-  }
-
-  private async sendEmail(data: EmailJobData): Promise<void> {
-    // Implementation
+    this.logger.error(`❌ Job ${job?.id} failed:`, error.message);
   }
 }
 ```
@@ -236,6 +243,44 @@ async processOrder(job: Job) { }
 | `@OnJobStalled()` | Job stalled | `(jobId: string)` |
 | `@OnWorkerReady()` | Worker ready | `()` |
 | `@OnWorkerError()` | Worker error | `(error: Error)` |
+
+## Dependency Injection in Processors
+
+Processors fully support Rikta's dependency injection. Use `@Autowired` to inject services:
+
+```typescript
+import { Autowired } from '@riktajs/core';
+import { Processor, Process, QueueService, QUEUE_SERVICE } from '@riktajs/queue';
+import { Job } from 'bullmq';
+
+@Processor('order-queue')
+class OrderProcessor {
+  @Autowired(LoggerService)
+  private logger!: LoggerService;
+
+  @Autowired(DatabaseService)
+  private db!: DatabaseService;
+
+  @Autowired(QUEUE_SERVICE)
+  private queueService!: QueueService;
+
+  @Process('process-order')
+  async handleOrder(job: Job) {
+    this.logger.info(`Processing order ${job.data.orderId}`);
+    
+    await this.db.saveOrder(job.data);
+    
+    // Add a follow-up job to another queue
+    await this.queueService.addJob('email-queue', 'send', {
+      to: job.data.email,
+      subject: 'Order Confirmed',
+      body: `Order ${job.data.orderId} processed!`,
+    });
+  }
+}
+```
+
+All injected services are resolved through Rikta's DI container, ensuring proper lifecycle management.
 
 ## Validation with Zod
 

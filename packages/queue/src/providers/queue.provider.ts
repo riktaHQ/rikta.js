@@ -257,8 +257,8 @@ export class QueueProvider implements OnProviderInit, OnProviderDestroy {
     const jobHandlers = getJobHandlers(processorClass);
     const eventHandlers = getEventHandlers(processorClass);
 
-    // Create processor instance
-    const processor = new (processorClass as new () => object)();
+    // Create processor instance via DI Container to support @Autowired
+    const processor = this.createProcessorInstance(processorClass);
 
     // Create worker
     const worker = new Worker(
@@ -371,6 +371,28 @@ export class QueueProvider implements OnProviderInit, OnProviderDestroy {
       } catch {
         // Ignore EventBus errors
       }
+    }
+  }
+
+  /**
+   * Create a processor instance using the DI Container to support @Autowired
+   */
+  private createProcessorInstance(processorClass: Function): object {
+    try {
+      const container = Container.getInstance();
+      const Constructor = processorClass as new (...args: unknown[]) => object;
+      
+      // Register the processor class if not already registered
+      if (!container.has(Constructor)) {
+        container.register(Constructor);
+      }
+      
+      // Resolve the processor through the container to enable DI
+      return container.resolve(Constructor);
+    } catch (error) {
+      // Fallback to direct instantiation if container is not available
+      console.warn(`  ⚠️ DI Container not available for processor ${processorClass.name}, using direct instantiation`);
+      return new (processorClass as new () => object)();
     }
   }
 

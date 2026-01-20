@@ -286,3 +286,39 @@ export class GoodService {
   }
 }
 ```
+
+## DI in Queue Processors
+
+Queue processors (from `@riktajs/queue`) fully support dependency injection. You can inject services, repositories, or any other registered providers:
+
+```typescript
+import { Autowired } from '@riktajs/core';
+import { Processor, Process, QueueService, QUEUE_SERVICE } from '@riktajs/queue';
+import { Job } from 'bullmq';
+
+@Processor('task-queue')
+export class TaskProcessor {
+  @Autowired(LoggerService)
+  private logger!: LoggerService;
+
+  @Autowired(DatabaseService)
+  private database!: DatabaseService;
+
+  @Autowired(QUEUE_SERVICE)
+  private queueService!: QueueService;
+
+  @Process('process-task')
+  async handleTask(job: Job) {
+    this.logger.info(`Processing task ${job.id}`);
+    
+    await this.database.save(job.data);
+    
+    // Trigger follow-up job in another queue
+    await this.queueService.addJob('notification-queue', 'send', {
+      message: 'Task completed!',
+    });
+  }
+}
+```
+
+All injected services are resolved through the DI container, ensuring proper lifecycle management. For more details, see the [Queues documentation](/docs/techniques/queues#dependency-injection-in-processors).

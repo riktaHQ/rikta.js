@@ -33,11 +33,13 @@ npm install @riktajs/queue bullmq
 
 ### 1. Create a Processor
 
-Processors handle jobs from a specific queue:
+Processors handle jobs from a specific queue. They fully support **dependency injection** via `@Autowired`:
 
 ```typescript
+import { Autowired } from '@riktajs/core';
 import { Processor, Process, OnJobComplete, OnJobFailed } from '@riktajs/queue';
 import { Job } from 'bullmq';
+import { MailerService } from '../services/mailer.service';
 
 interface EmailJobData {
   to: string;
@@ -47,11 +49,16 @@ interface EmailJobData {
 
 @Processor('email-queue', { concurrency: 5 })
 export class EmailProcessor {
+  // Inject services using @Autowired
+  @Autowired(MailerService)
+  private mailer!: MailerService;
+
   @Process('send')
   async handleSendEmail(job: Job<EmailJobData>) {
     console.log(`📧 Sending email to ${job.data.to}`);
     
-    await this.sendEmail(job.data);
+    // Use the injected service
+    await this.mailer.send(job.data);
     
     return { sent: true, messageId: `msg-${job.id}` };
   }
@@ -64,10 +71,6 @@ export class EmailProcessor {
   @OnJobFailed()
   async onFailed(job: Job | undefined, error: Error) {
     console.error(`❌ Job ${job?.id} failed:`, error.message);
-  }
-
-  private async sendEmail(data: EmailJobData): Promise<void> {
-    // Your email sending implementation
   }
 }
 ```
@@ -257,6 +260,95 @@ await queueService.clearQueue(queueName); // Clear all
 // Get all queue names
 const names = queueService.getQueueNames();
 ```
+
+## Dependency Injection in Processors
+
+Processors support the same dependency injection patterns as any other Rikta service. You can inject services, repositories, or any other registered providers using `@Autowired`.
+
+### Basic Injection
+
+```typescript
+import { Autowired } from '@riktajs/core';
+import { Processor, Process } from '@riktajs/queue';
+import { Job } from 'bullmq';
+import { LoggerService } from '../services/logger.service';
+import { NotificationService } from '../services/notification.service';
+
+@Processor('task-queue')
+export class TaskProcessor {
+  @Autowired(LoggerService)
+  private logger!: LoggerService;
+
+  @Autowired(NotificationService)
+  private notifications!: NotificationService;
+
+  @Process('process-task')
+  async handleTask(job: Job) {
+    this.logger.info(`Processing task ${job.id}`);
+    
+    // Do work...
+    
+    await this.notifications.send({
+      userId: job.data.userId,
+      message: 'Task completed!',
+    });
+  }
+}
+```
+
+### Injecting QueueService
+
+You can even inject `QueueService` into processors to add jobs to other queues:
+
+```typescript
+import { Autowired } from '@riktajs/core';
+import { Processor, Process, QueueService, QUEUE_SERVICE } from '@riktajs/queue';
+import { Job } from 'bullmq';
+
+@Processor('order-queue')
+export class OrderProcessor {
+  @Autowired(QUEUE_SERVICE)
+  private queueService!: QueueService;
+
+  @Process('process-order')
+  async handleOrder(job: Job<{ orderId: string; email: string }>) {
+    // Process the order...
+    
+    // Then trigger an email notification via another queue
+    await this.queueService.addJob('email-queue', 'send', {
+      to: job.data.email,
+      subject: 'Order Confirmed',
+      body: `Your order ${job.data.orderId} has been processed!`,
+    });
+  }
+}
+```
+
+### Token-based Injection
+
+Use injection tokens for more flexibility:
+
+```typescript
+import { Autowired, InjectionToken } from '@riktajs/core';
+import { Processor, Process } from '@riktajs/queue';
+
+const DATABASE_CLIENT = new InjectionToken<DatabaseClient>('DatabaseClient');
+
+@Processor('data-queue')
+export class DataProcessor {
+  @Autowired(DATABASE_CLIENT)
+  private db!: DatabaseClient;
+
+  @Process('sync')
+  async handleSync(job: Job) {
+    await this.db.sync(job.data);
+  }
+}
+```
+
+:::tip
+All services injected into processors are resolved through Rikta's DI container, ensuring proper lifecycle management and singleton behavior where configured.
+:::
 
 ## Advanced Features
 
@@ -596,6 +688,7 @@ import {
   OnJobComplete, 
   OnJobFailed,
   QueueService,
+  QUEUE_SERVICE,
   createJobSchema,
   z,
 } from '@riktajs/queue';
@@ -617,7 +710,8 @@ type EmailJobData = z.infer<typeof EmailJobSchema.schema>;
 
 @Processor('email-queue', { concurrency: 10 })
 export class EmailProcessor {
-  @Autowired()
+  // Inject the mailer service - DI is fully supported in processors!
+  @Autowired(MailerService)
   private mailer!: MailerService;
 
   @Process('send')
@@ -664,7 +758,7 @@ export class EmailProcessor {
 
 @Injectable()
 export class EmailService {
-  @Autowired()
+  @Autowired(QUEUE_SERVICE)
   private queueService!: QueueService;
 
   async sendEmail(to: string, subject: string, body: string) {

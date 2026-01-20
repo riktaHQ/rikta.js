@@ -6,10 +6,13 @@
  * - Multiple @Process handlers in one processor
  * - Progress updates for long-running jobs
  * - Different job types
+ * - @Autowired dependency injection of services
  */
 
+import { Autowired } from '@riktajs/core';
 import { Processor, Process, OnJobComplete, OnJobProgress, OnWorkerReady } from '@riktajs/queue';
 import { Job } from 'bullmq';
+import { LoggerService } from '../services/logger.service';
 
 export interface DataProcessingJobData {
   datasetId: string;
@@ -24,15 +27,19 @@ export interface ReportJobData {
 
 @Processor('task-queue', { concurrency: 2 })
 export class TaskProcessor {
+  
+  @Autowired(LoggerService)
+  private logger!: LoggerService;
 
   @OnWorkerReady()
   onReady() {
-    console.log('⚙️  Task worker is ready and listening for jobs');
+    this.logger.setContext('TaskProcessor');
+    this.logger.success('Task worker is ready and listening for jobs');
   }
 
   @Process('data-processing')
   async handleDataProcessing(job: Job<DataProcessingJobData>) {
-    console.log(`🔄 Starting data processing job ${job.id}: ${job.data.operation}`);
+    this.logger.info(`Starting data processing job ${job.id}: ${job.data.operation}`);
     
     const steps = 5;
     for (let i = 1; i <= steps; i++) {
@@ -42,7 +49,7 @@ export class TaskProcessor {
       // Update progress
       const progress = Math.round((i / steps) * 100);
       await job.updateProgress(progress);
-      console.log(`  📊 Job ${job.id} progress: ${progress}%`);
+      this.logger.debug(`Job ${job.id} progress: ${progress}%`);
     }
     
     return {
@@ -55,7 +62,7 @@ export class TaskProcessor {
 
   @Process('generate-report')
   async handleGenerateReport(job: Job<ReportJobData>) {
-    console.log(`📋 Generating report: ${job.data.reportType}`);
+    this.logger.info(`Generating report: ${job.data.reportType}`);
     
     // Simulate report generation
     await new Promise(resolve => setTimeout(resolve, 1500));
@@ -69,7 +76,7 @@ export class TaskProcessor {
 
   @Process('cleanup')
   async handleCleanup(job: Job<{ olderThanDays: number }>) {
-    console.log(`🧹 Running cleanup for items older than ${job.data.olderThanDays} days`);
+    this.logger.info(`Running cleanup for items older than ${job.data.olderThanDays} days`);
     
     await new Promise(resolve => setTimeout(resolve, 800));
     
@@ -79,11 +86,11 @@ export class TaskProcessor {
 
   @OnJobProgress()
   onProgress(job: Job, progress: number | object) {
-    console.log(`📈 Job ${job.id} progress update:`, progress);
+    this.logger.debug(`Job ${job.id} progress update: ${progress}`);
   }
 
   @OnJobComplete()
   onComplete(job: Job, result: unknown) {
-    console.log(`✅ Task job ${job.id} (${job.name}) completed:`, JSON.stringify(result));
+    this.logger.success(`Task job ${job.id} (${job.name}) completed: ${JSON.stringify(result)}`);
   }
 }
