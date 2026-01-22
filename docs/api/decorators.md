@@ -326,3 +326,141 @@ export class UserController {
 | `@Autowired(token?)` | **Dependency injection** |
 | `@Optional()` | Optional dependency |
 | `@HttpCode(code)` | Response status |
+| `SetMetadata(key, value)` | Store custom metadata |
+| `applyDecorators(...decorators)` | Compose multiple decorators |
+| `createParamDecorator(factory)` | Create custom param decorators |
+
+## Custom Decorators
+
+Rikta provides powerful utilities for creating custom decorators, allowing you to extend the framework with your own functionality.
+
+### createParamDecorator
+
+Creates a custom parameter decorator that can extract data from the request context.
+
+```typescript
+import { createParamDecorator, ExecutionContext } from '@riktajs/core';
+
+// Create a @User() decorator
+export const User = createParamDecorator<string | undefined, UserEntity>(
+  (data, ctx: ExecutionContext) => {
+    const request = ctx.getRequest<FastifyRequest & { user: UserEntity }>();
+    const user = request.user;
+    
+    // If data is provided, return that specific property
+    return data ? user?.[data as keyof UserEntity] : user;
+  }
+);
+
+// Usage in controller
+@Controller('/users')
+export class UserController {
+  @Get('/profile')
+  getProfile(@User() user: UserEntity) {
+    return user;
+  }
+
+  @Get('/email')
+  getEmail(@User('email') email: string) {
+    return { email };
+  }
+}
+```
+
+**More Examples:**
+
+```typescript
+// @ClientIp() - Extract client IP address
+export const ClientIp = createParamDecorator<void, string>((_, ctx) => {
+  const request = ctx.getRequest();
+  return request.ip || 
+         (request.headers['x-forwarded-for'] as string) || 
+         'unknown';
+});
+
+// @UserAgent() - Extract user agent
+export const UserAgent = createParamDecorator<void, string>((_, ctx) => {
+  const request = ctx.getRequest();
+  return request.headers['user-agent'] || 'unknown';
+});
+
+// @Lang() - Extract language preference
+export const Lang = createParamDecorator<string, string>((defaultLang, ctx) => {
+  const request = ctx.getRequest();
+  return request.headers['accept-language']?.split(',')[0] || defaultLang || 'en';
+});
+```
+
+### applyDecorators
+
+Combines multiple decorators into a single reusable decorator.
+
+```typescript
+import { applyDecorators, SetMetadata, UseGuards } from '@riktajs/core';
+
+// Create a composed @Auth decorator
+export function Auth(...roles: string[]) {
+  return applyDecorators(
+    SetMetadata('roles', roles),
+    UseGuards(AuthGuard, RolesGuard)
+  );
+}
+
+// Usage
+@Controller('/admin')
+export class AdminController {
+  @Auth('admin')
+  @Get('/dashboard')
+  getDashboard() {
+    return { message: 'Admin dashboard' };
+  }
+}
+```
+
+**With Swagger Integration:**
+
+```typescript
+import { applyDecorators, SetMetadata, UseGuards } from '@riktajs/core';
+import { ApiBearerAuth, ApiUnauthorizedResponse } from '@riktajs/swagger';
+
+export function Auth(...roles: Role[]) {
+  return applyDecorators(
+    SetMetadata('roles', roles),
+    UseGuards(AuthGuard, RolesGuard),
+    ApiBearerAuth(),
+    ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  );
+}
+```
+
+### SetMetadata
+
+Sets custom metadata on a class or method that can be retrieved later.
+
+```typescript
+import { SetMetadata, ExecutionContext, Injectable, CanActivate } from '@riktajs/core';
+
+// Create a @Roles decorator using SetMetadata
+export const Roles = (...roles: string[]) => SetMetadata('roles', roles);
+
+// Use in controller
+@Controller('/admin')
+export class AdminController {
+  @Roles('admin', 'moderator')
+  @Get()
+  adminOnly() {
+    return { admin: true };
+  }
+}
+
+// Read metadata in guard
+@Injectable()
+export class RolesGuard implements CanActivate {
+  canActivate(context: ExecutionContext): boolean {
+    const roles = context.getMetadata<string[]>('roles') ?? [];
+    const user = context.getRequest().user;
+    return roles.some(role => user?.roles?.includes(role));
+  }
+}
+```
+

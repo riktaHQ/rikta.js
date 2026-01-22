@@ -32,6 +32,16 @@ import {
   PaginationQuery,
 } from '../services/user.service';
 import { LoggerMiddleware, ResponseTimeMiddleware } from '../middleware';
+// Import custom decorators
+import { 
+  ClientIp, 
+  UserAgent, 
+  RequestId, 
+  Lang, 
+  Tracked, 
+  Public, 
+  Cached 
+} from '../decorators';
 
 // Response schema for array of users
 const UserArraySchema = z.array(z.object({
@@ -168,6 +178,78 @@ export class UserController {
     }
     
     return { success: true };
+  }
+
+  // ============================================================================
+  // Endpoints demonstrating Custom Decorators
+  // ============================================================================
+
+  /**
+   * GET /users/request-info
+   * Demonstrates custom param decorators: @ClientIp, @UserAgent, @RequestId, @Lang
+   */
+  @Get('/request-info')
+  @Tracked()
+  @ApiOperation({ 
+    summary: 'Get request info', 
+    description: 'Demonstrates custom parameter decorators by returning request metadata' 
+  })
+  @ApiResponse({ status: 200, description: 'Request information extracted via custom decorators' })
+  getRequestInfo(
+    @ClientIp() ip: string,
+    @UserAgent() userAgent: string,
+    @RequestId() requestId: string,
+    @Lang('en') language: string
+  ) {
+    return {
+      message: 'Custom decorators in action!',
+      requestInfo: {
+        clientIp: ip,
+        userAgent: userAgent,
+        requestId: requestId,
+        preferredLanguage: language,
+      },
+      decoratorsUsed: [
+        '@ClientIp() - Extracts client IP from request',
+        '@UserAgent() - Extracts User-Agent header',
+        '@RequestId() - Gets or generates request correlation ID',
+        '@Lang("en") - Gets preferred language with default fallback',
+        '@Tracked() - Composed decorator for request tracking metadata'
+      ]
+    };
+  }
+
+  /**
+   * GET /users/greeting
+   * Demonstrates @Lang decorator with localized responses
+   */
+  @Get('/greeting')
+  @Public()
+  @Cached(60)
+  @ApiOperation({ 
+    summary: 'Get localized greeting', 
+    description: 'Returns a greeting in the users preferred language' 
+  })
+  @ApiResponse({ status: 200, description: 'Localized greeting message' })
+  getGreeting(@Lang('en') lang: string) {
+    const greetings: Record<string, string> = {
+      en: 'Hello! Welcome to Rikta Framework',
+      es: '¡Hola! Bienvenido a Rikta Framework',
+      it: 'Ciao! Benvenuto in Rikta Framework',
+      fr: 'Bonjour! Bienvenue dans Rikta Framework',
+      de: 'Hallo! Willkommen bei Rikta Framework',
+      pt: 'Olá! Bem-vindo ao Rikta Framework',
+    };
+
+    return {
+      language: lang,
+      greeting: greetings[lang] || greetings.en,
+      decoratorsUsed: [
+        '@Lang("en") - Extracts Accept-Language header with default',
+        '@Public() - Marks endpoint as publicly accessible',
+        '@Cached(60) - Sets cache TTL metadata to 60 seconds'
+      ]
+    };
   }
 }
 

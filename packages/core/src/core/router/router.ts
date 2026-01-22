@@ -10,9 +10,10 @@ import {
 } from '../constants';
 import { Constructor, RouteDefinition, RouteContext } from '../types';
 import { ParamMetadata } from '../decorators/param.decorator';
+import { getCustomParamMetadata, CustomParamMetadata } from '../decorators/create-param-decorator';
 import { ValidationException } from '../exceptions/validation.exception';
 import { ForbiddenException } from '../exceptions/exceptions';
-import { ExecutionContextImpl } from '../guards/execution-context';
+import { ExecutionContext, ExecutionContextImpl } from '../guards/execution-context';
 import { getGuardsMetadata, GuardClass } from '../guards/use-guards.decorator';
 import type { CanActivate } from '../guards/can-activate.interface';
 import { getMiddlewareMetadata, MiddlewareClass } from '../middleware/use-middleware.decorator';
@@ -116,6 +117,10 @@ export class Router {
     const paramsMeta: ParamMetadata[] = 
       Reflect.getMetadata(PARAM_METADATA, controllerClass, route.handlerName) ?? [];
 
+    // Get custom parameter metadata (from createParamDecorator)
+    const customParamsMeta: CustomParamMetadata[] = 
+      getCustomParamMetadata(controllerClass, route.handlerName);
+
     // Get HTTP status code if set
     const statusCode = Reflect.getMetadata(HTTP_CODE_METADATA, controllerClass, route.handlerName);
 
@@ -129,8 +134,14 @@ export class Router {
     // OPTIMIZATION: Pre-compile parameter resolvers
     // ============================================
     const compiledResolvers = this.compileParamResolvers(paramsMeta);
-    const hasParams = compiledResolvers.length > 0;
-    const maxParamIndex = hasParams ? Math.max(...compiledResolvers.map(r => r.index)) : -1;
+    const hasBuiltinParams = compiledResolvers.length > 0;
+    const hasCustomParams = customParamsMeta.length > 0;
+    const hasParams = hasBuiltinParams || hasCustomParams;
+    const allParamIndexes = [
+      ...compiledResolvers.map(r => r.index),
+      ...customParamsMeta.map(r => r.index)
+    ];
+    const maxParamIndex = hasParams ? Math.max(...allParamIndexes) : -1;
 
     // ============================================
     // OPTIMIZATION: Pre-resolve guard instances
@@ -144,17 +155,21 @@ export class Router {
     const middlewareInstances = this.resolveMiddlewareInstances(middleware);
     const hasMiddleware = middlewareInstances.length > 0;
 
-    // Pre-create execution context factory (only if guards are present)
-    const createContext = hasGuards
+    // Pre-create execution context factory (needed for guards or custom params)
+    const needsContext = hasGuards || hasCustomParams;
+    const createContext = needsContext
       ? (req: FastifyRequest, rep: FastifyReply) => 
           new ExecutionContextImpl(req, rep, controllerClass, route.handlerName)
       : null;
 
     // Unified route handler
     const routeHandler: CompiledHandler = async (request, reply) => {
+      // Create execution context if needed (shared between guards and custom params)
+      const executionContext = createContext ? createContext(request, reply) : null;
+      
       // 1. Execute guards (if any)
-      if (createContext) {
-        await this.executeGuardsOptimized(guardInstances, createContext(request, reply));
+      if (hasGuards && executionContext) {
+        await this.executeGuardsOptimized(guardInstances, executionContext);
       }
       
       // 2. Execute middleware (if any)
@@ -163,8 +178,20 @@ export class Router {
       }
       
       // 3. Resolve params and execute handler
-      const result = hasParams
-        ? await handler.apply(controllerInstance, this.resolveParamsOptimized(compiledResolvers, maxParamIndex, request, reply))
+      let args: unknown[] | undefined;
+      if (hasParams) {
+        args = await this.resolveAllParams(
+          compiledResolvers,
+          customParamsMeta,
+          maxParamIndex,
+          request,
+          reply,
+          executionContext
+        );
+      }
+      
+      const result = args
+        ? await handler.apply(controllerInstance, args)
         : await handler.call(controllerInstance);
       
       // 4. Set status code if specified
@@ -243,16 +270,18 @@ export class Router {
   }
 
   /**
-   * OPTIMIZATION: Resolve params using pre-compiled extractors
+   * Resolve all parameters including both built-in and custom param decorators
    */
-  private resolveParamsOptimized(
-    resolvers: CompiledParamResolver[],
+  private async resolveAllParams(
+    compiledResolvers: CompiledParamResolver[],
+    customParams: CustomParamMetadata[],
     maxIndex: number,
     request: FastifyRequest,
-    reply: FastifyReply
-  ): unknown[] {
-    // Build context once
-    const context: RouteContext = {
+    reply: FastifyReply,
+    executionContext: ExecutionContext | null
+  ): Promise<unknown[]> {
+    // Build route context once for built-in resolvers
+    const routeContext: RouteContext = {
       request,
       reply,
       params: request.params as Record<string, string>,
@@ -263,9 +292,10 @@ export class Router {
     // Pre-allocate array
     const args = new Array(maxIndex + 1);
 
-    for (let i = 0; i < resolvers.length; i++) {
-      const resolver = resolvers[i];
-      let value = resolver.extract(context);
+    // Resolve built-in params synchronously
+    for (let i = 0; i < compiledResolvers.length; i++) {
+      const resolver = compiledResolvers[i];
+      let value = resolver.extract(routeContext);
 
       // Validate if schema present
       if (resolver.zodSchema) {
@@ -280,6 +310,23 @@ export class Router {
       }
 
       args[resolver.index] = value;
+    }
+
+    // Resolve custom params (potentially async)
+    if (customParams.length > 0) {
+      // Create execution context if not already created
+      const ctx = executionContext ?? new ExecutionContextImpl(
+        request,
+        reply,
+        {} as Constructor,
+        ''
+      );
+
+      // Execute custom param factories (support async)
+      for (const customParam of customParams) {
+        const value = await customParam.factory(customParam.data, ctx);
+        args[customParam.index] = value;
+      }
     }
 
     return args;
