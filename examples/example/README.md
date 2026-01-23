@@ -16,7 +16,14 @@ example/
     │   └── logger.provider.ts       # @Provider for LOGGER (with dependencies!)
     ├── controllers/
     │   ├── app.controller.ts        # Root & health endpoints
+    │   ├── notification.controller.ts # Strategy Pattern demo
     │   └── user.controller.ts       # User CRUD endpoints
+    ├── strategies/
+    │   ├── notification.strategy.ts # Abstract strategy contract
+    │   ├── email.strategy.ts        # @Primary email implementation
+    │   ├── sms.strategy.ts          # SMS implementation
+    │   ├── push.strategy.ts         # Push notification implementation
+    │   └── notification.factory.ts  # Factory for runtime selection
     └── services/
         ├── database.service.ts      # In-memory database (priority: 100)
         ├── health.service.ts        # Health check + OnApplicationListen
@@ -43,6 +50,10 @@ Server starts at `http://localhost:3000`
 | POST | `/users` | Create user |
 | PUT | `/users/:id` | Update user |
 | DELETE | `/users/:id` | Delete user |
+| GET | `/notifications/channels` | List notification channels |
+| GET | `/notifications/status` | Notification system status |
+| POST | `/notifications/send` | Send notification |
+| POST | `/notifications/broadcast` | Broadcast to all channels |
 
 ## 🔄 Lifecycle Demonstrations
 
@@ -136,6 +147,55 @@ export class DatabaseService {
 }
 ```
 
+### Strategy Pattern with Abstract Class DI
+
+```typescript
+// Abstract contract
+abstract class NotificationStrategy {
+  abstract send(recipient: string, message: string): Promise<boolean>;
+  abstract isAvailable(): boolean;
+}
+
+// Primary implementation (default)
+@Injectable()
+@Primary()
+@Implements(NotificationStrategy)
+export class EmailStrategy extends NotificationStrategy {
+  async send(recipient: string, message: string): Promise<boolean> {
+    // Email logic...
+    return true;
+  }
+  
+  isAvailable(): boolean {
+    return true;
+  }
+}
+
+// Factory for runtime selection
+@Injectable()
+export class NotificationFactory {
+  @Autowired()
+  private emailStrategy!: EmailStrategy;
+  
+  @Autowired()
+  private smsStrategy!: SmsStrategy;
+  
+  getStrategy(channel: 'email' | 'sms'): NotificationStrategy {
+    return channel === 'email' ? this.emailStrategy : this.smsStrategy;
+  }
+}
+
+// Inject abstract class - auto-resolved to @Primary
+@Injectable()
+export class NotificationService {
+  @Autowired()
+  private strategy!: NotificationStrategy; // Gets EmailStrategy
+  
+  @Autowired()
+  private factory!: NotificationFactory;
+}
+```
+
 ## 🧪 Test with cURL
 
 ```bash
@@ -152,6 +212,24 @@ curl -X POST http://localhost:3000/users \
 
 # List users
 curl http://localhost:3000/users
+
+# Notification channels
+curl http://localhost:3000/notifications/channels
+
+# Send notification via default channel (email)
+curl -X POST http://localhost:3000/notifications/send \
+  -H "Content-Type: application/json" \
+  -d '{"recipient": "user@example.com", "message": "Hello!"}'
+
+# Send notification via specific channel
+curl -X POST http://localhost:3000/notifications/send \
+  -H "Content-Type: application/json" \
+  -d '{"recipient": "+1234567890", "message": "Your OTP is 123456", "channel": "sms"}'
+
+# Broadcast to all available channels
+curl -X POST http://localhost:3000/notifications/broadcast \
+  -H "Content-Type: application/json" \
+  -d '{"recipient": "user123", "message": "Important announcement!"}'
 ```
 
 ## 🔑 Key Features Demonstrated
@@ -165,6 +243,11 @@ curl http://localhost:3000/users
 | `OnApplicationListen` hook | `services/health.service.ts` |
 | `@On()` decorator | `services/monitoring.service.ts` |
 | Auto-discovery | `main.ts` (autowired: ['./src']) |
+| Strategy Pattern | `strategies/*.ts` |
+| Abstract Class DI | `strategies/notification.strategy.ts` |
+| `@Implements` decorator | `strategies/email.strategy.ts` |
+| `@Primary` decorator | `strategies/email.strategy.ts` |
+| Factory Pattern | `strategies/notification.factory.ts` |
 
 ## 📦 Path Resolution
 

@@ -10,6 +10,7 @@ export interface AutowiredMetadata {
   index?: number;       // For constructor parameters
   propertyKey?: string; // For property injection
   optional?: boolean;   // If true, undefined is injected when not found
+  name?: string;        // For named implementation injection
 }
 
 /**
@@ -20,6 +21,9 @@ export interface AutowiredMetadata {
  * - Class properties
  * 
  * Automatically infers the type when no token is provided.
+ * 
+ * @param token - Optional injection token (class, InjectionToken, string, or symbol)
+ * @param name - Optional name for qualified injection of named implementations
  * 
  * @example Property injection (most common):
  * ```typescript
@@ -33,18 +37,31 @@ export interface AutowiredMetadata {
  * }
  * ```
  * 
+ * @example Named implementation injection:
+ * ```typescript
+ * @Controller()
+ * export class MailController {
+ *   @Autowired(Mailer, 'smtp')
+ *   private smtpMailer!: Mailer;
+ * 
+ *   @Autowired(Mailer, 'sendgrid')
+ *   private sendgridMailer!: Mailer;
+ * }
+ * ```
+ * 
  * @example Constructor injection:
  * ```typescript
  * @Injectable()
  * class ApiService {
  *   constructor(
  *     @Autowired() private userService: UserService,
- *     @Autowired(CONFIG) private config: AppConfig
+ *     @Autowired(CONFIG) private config: AppConfig,
+ *     @Autowired(Mailer, 'smtp') private mailer: Mailer
  *   ) {}
  * }
  * ```
  */
-export function Autowired(token?: Token): ParameterDecorator & PropertyDecorator {
+export function Autowired(token?: Token, name?: string): ParameterDecorator & PropertyDecorator {
   return (
     target: Object,
     propertyKey: string | symbol | undefined,
@@ -70,6 +87,7 @@ export function Autowired(token?: Token): ParameterDecorator & PropertyDecorator
       existingInjects.push({
         token: resolvedToken as Token,
         index: parameterIndex,
+        name,
       });
       
       Reflect.defineMetadata(INJECT_METADATA, existingInjects, target);
@@ -91,6 +109,7 @@ export function Autowired(token?: Token): ParameterDecorator & PropertyDecorator
       existingAutowires.push({
         token: resolvedToken,
         propertyKey: String(propertyKey),
+        name,
       });
       
       Reflect.defineMetadata(AUTOWIRED_METADATA, existingAutowires, target.constructor);

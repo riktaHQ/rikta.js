@@ -3,6 +3,8 @@ import { Constructor, ProviderScope, InjectableOptions } from '../types';
 import { INJECT_METADATA, AUTOWIRED_METADATA } from '../constants';
 import { Token, InjectionToken, ProviderDefinition, ValueProvider, FactoryProvider, ClassProvider, ExistingProvider } from './injection-token';
 import { AutowiredMetadata } from '../decorators/autowired.decorator';
+import { registry } from '../registry';
+import { isAbstractClass } from './abstract-class.utils';
 
 /**
  * Dependency Injection Container
@@ -14,6 +16,7 @@ import { AutowiredMetadata } from '../decorators/autowired.decorator';
  * - Property injection (autowire)
  * - Token-based injection
  * - Value and factory providers
+ * - Abstract class-based injection (strategy pattern)
  */
 export class Container {
   private static instance: Container;
@@ -141,14 +144,24 @@ export class Container {
     const config = this.providers.get(token);
     
     if (!config) {
-      // Token not registered
-      if (optional) {
-        return undefined;
+      // Token not registered - check if it's an abstract class with implementations
+      if (typeof token === 'function') {
+        const implementation = this.resolveAbstractClass(token as Constructor);
+        if (implementation) {
+          const instance = this.resolveClass(implementation);
+          // Cache under the abstract class token
+          this.singletons.set(token, instance);
+          return instance;
+        }
+        
+        // Not abstract, try to resolve as regular class (auto-registration)
+        if (!isAbstractClass(token as Constructor)) {
+          return this.resolveClass(token as Constructor);
+        }
       }
       
-      // If it's a constructor, try to resolve it anyway (auto-registration)
-      if (typeof token === 'function') {
-        return this.resolveClass(token as Constructor);
+      if (optional) {
+        return undefined;
       }
       
       throw new Error(`No provider found for token: ${this.getTokenName(token)}`);
@@ -165,6 +178,29 @@ export class Container {
     }
 
     throw new Error(`Cannot resolve token: ${this.getTokenName(token)}`);
+  }
+
+  /**
+   * Try to resolve an abstract class to its concrete implementation
+   * 
+   * @param abstractClass - The abstract class to resolve
+   * @param name - Optional name for named implementation resolution
+   * @returns The concrete implementation class, or undefined if not found
+   */
+  private resolveAbstractClass(abstractClass: Constructor, name?: string): Constructor | undefined {
+    // If resolving by name, go directly to registry
+    if (name) {
+      return registry.resolveImplementation(abstractClass, name);
+    }
+    
+    // First check if we have a direct provider registration
+    const config = this.providers.get(abstractClass);
+    if (config?.provider && 'useClass' in config.provider) {
+      return (config.provider as ClassProvider).useClass;
+    }
+
+    // Check registry for @Implements decorator registrations
+    return registry.resolveImplementation(abstractClass);
   }
 
   /**
@@ -262,6 +298,7 @@ export class Container {
         const injectOverride = injectMeta.find(m => m.index === index);
         const token = injectOverride?.token ?? paramType;
         const isOptional = injectOverride?.optional ?? false;
+        const name = injectOverride?.name;
         
         // If we have no token and no paramType, skip or error
         if (!token) {
@@ -289,8 +326,8 @@ export class Container {
         
         dependencies.push(
           isOptional 
-            ? this.resolveOptional(token)
-            : this.resolve(token)
+            ? this.resolveWithNameOptional(token, name)
+            : this.resolveWithName(token, name)
         );
       }
 
@@ -326,8 +363,8 @@ export class Container {
       
       try {
         const value = isOptional 
-          ? this.resolveOptional(meta.token)
-          : this.resolve(meta.token);
+          ? this.resolveWithNameOptional(meta.token, meta.name)
+          : this.resolveWithName(meta.token, meta.name);
         
         (instance as Record<string, unknown>)[meta.propertyKey] = value;
       } catch (error) {
@@ -335,6 +372,33 @@ export class Container {
           throw error;
         }
       }
+    }
+  }
+
+  /**
+   * Resolve a dependency with optional name for qualified injection
+   */
+  private resolveWithName<T>(token: Token<T>, name?: string): T {
+    // If we have a name and the token is a class (potential abstract class)
+    if (name && typeof token === 'function') {
+      const implementation = this.resolveAbstractClass(token as Constructor, name);
+      if (implementation) {
+        return this.resolveClass(implementation) as T;
+      }
+      throw new Error(`No implementation named '${name}' found for ${this.getTokenName(token)}`);
+    }
+    
+    return this.resolve(token);
+  }
+
+  /**
+   * Resolve a dependency with optional name, returning undefined if not found
+   */
+  private resolveWithNameOptional<T>(token: Token<T>, name?: string): T | undefined {
+    try {
+      return this.resolveWithName(token, name);
+    } catch {
+      return undefined;
     }
   }
 

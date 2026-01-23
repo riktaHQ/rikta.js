@@ -3,6 +3,17 @@ import {Container} from "@rikta/core/container";
 
 export type Constructor<T = any> = new (...args: any[]) => T;
 
+/**
+ * Type for abstract class constructors
+ * Used in @Implements decorator to accept abstract classes
+ */
+export type AbstractConstructor<T = any> = abstract new (...args: any[]) => T;
+
+/**
+ * Type that accepts both concrete and abstract class constructors
+ */
+export type AnyConstructor<T = any> = Constructor<T> | AbstractConstructor<T>;
+
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'OPTIONS' | 'HEAD';
 
 export interface RouteContext {

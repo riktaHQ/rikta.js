@@ -1,6 +1,6 @@
 {
   "name": "@riktajs/core",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "A fast and modern TypeScript backend framework with zero-config autowiring, powered by Fastify",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -26,7 +26,7 @@
     "dependency-injection",
     "nestjs-like"
   ],
-  "author": "",
+  "author": "riktar",
   "license": "MIT",
   "dependencies": {
     "dotenv": "^17.2.3",

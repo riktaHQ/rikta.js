@@ -247,7 +247,43 @@ container.registerClass(LOGGER, ConsoleLogger);
 container.registerClass(LOGGER, FileLogger);
 ```
 
-### 3. Keep Services Focused
+### 3. Use Abstract Classes for Complex Contracts
+
+For complex service contracts (Strategy pattern, Repository pattern), use abstract classes instead of tokens:
+
+```typescript
+// Define the contract
+abstract class NotificationStrategy {
+  abstract send(recipient: string, message: string): Promise<boolean>;
+  abstract isAvailable(): boolean;
+}
+
+// Implement with @Implements and @Primary
+@Injectable()
+@Primary()
+@Implements(NotificationStrategy)
+export class EmailStrategy extends NotificationStrategy {
+  async send(recipient: string, message: string): Promise<boolean> {
+    // Email implementation
+    return true;
+  }
+  
+  isAvailable(): boolean {
+    return true;
+  }
+}
+
+// Inject the abstract class - auto-resolved to @Primary
+@Injectable()
+export class NotificationService {
+  @Autowired()
+  private strategy!: NotificationStrategy; // Gets EmailStrategy
+}
+```
+
+See [Strategy Pattern with Factory](#strategy-pattern-with-factory) for a complete example.
+
+### 4. Keep Services Focused
 
 ```typescript
 // ✅ Good - single responsibility
@@ -264,7 +300,7 @@ export class UserService {
 }
 ```
 
-### 4. Avoid Service Locator Pattern
+### 5. Avoid Service Locator Pattern
 
 ```typescript
 // ❌ Anti-pattern - manually resolving
@@ -286,6 +322,247 @@ export class GoodService {
   }
 }
 ```
+
+## Strategy Pattern with Factory
+
+The Strategy pattern allows you to define a family of algorithms and make them interchangeable at runtime. Rikta's Abstract Class DI makes this pattern elegant and type-safe.
+
+### Define the Abstract Strategy
+
+```typescript
+// strategies/notification.strategy.ts
+export abstract class NotificationStrategy {
+  abstract send(recipient: string, message: string): Promise<boolean>;
+  abstract isAvailable(): boolean;
+  abstract getChannel(): string;
+  
+  // Shared utility method available to all implementations
+  protected log(message: string): void {
+    console.log(`[${this.constructor.name}] ${message}`);
+  }
+}
+```
+
+### Create Multiple Implementations
+
+```typescript
+// strategies/email.strategy.ts
+import { Injectable, Implements, Primary } from '@riktajs/core';
+
+@Injectable()
+@Primary()  // This is the default
+@Implements(NotificationStrategy)
+export class EmailStrategy extends NotificationStrategy {
+  async send(recipient: string, message: string): Promise<boolean> {
+    this.log(`Sending email to ${recipient}`);
+    return true;
+  }
+  
+  isAvailable(): boolean {
+    return true;
+  }
+  
+  getChannel(): string {
+    return 'email';
+  }
+}
+
+// strategies/sms.strategy.ts
+@Injectable()
+@Implements(NotificationStrategy)
+export class SmsStrategy extends NotificationStrategy {
+  async send(recipient: string, message: string): Promise<boolean> {
+    this.log(`Sending SMS to ${recipient}`);
+    return true;
+  }
+  
+  isAvailable(): boolean {
+    return process.env.TWILIO_ENABLED === 'true';
+  }
+  
+  getChannel(): string {
+    return 'sms';
+  }
+}
+```
+
+### Create a Factory for Runtime Selection
+
+```typescript
+// strategies/notification.factory.ts
+@Injectable()
+export class NotificationFactory {
+  @Autowired()
+  private emailStrategy!: EmailStrategy;
+  
+  @Autowired()
+  private smsStrategy!: SmsStrategy;
+  
+  @Autowired()
+  private pushStrategy!: PushStrategy;
+  
+  getStrategy(channel: 'email' | 'sms' | 'push'): NotificationStrategy {
+    switch (channel) {
+      case 'email': return this.emailStrategy;
+      case 'sms': return this.smsStrategy;
+      case 'push': return this.pushStrategy;
+    }
+  }
+  
+  getAvailableStrategies(): NotificationStrategy[] {
+    return [this.emailStrategy, this.smsStrategy, this.pushStrategy]
+      .filter(s => s.isAvailable());
+  }
+}
+```
+
+### Use in Your Service
+
+```typescript
+@Injectable()
+export class NotificationService {
+  // Default strategy (EmailStrategy - marked as @Primary)
+  @Autowired()
+  private defaultStrategy!: NotificationStrategy;
+  
+  // Factory for runtime selection
+  @Autowired()
+  private factory!: NotificationFactory;
+  
+  async notify(
+    recipient: string, 
+    message: string, 
+    channel?: 'email' | 'sms' | 'push'
+  ): Promise<boolean> {
+    const strategy = channel 
+      ? this.factory.getStrategy(channel)
+      : this.defaultStrategy;
+    
+    return strategy.send(recipient, message);
+  }
+  
+  async broadcastToAll(recipient: string, message: string): Promise<void> {
+    const strategies = this.factory.getAvailableStrategies();
+    await Promise.all(strategies.map(s => s.send(recipient, message)));
+  }
+}
+```
+
+:::tip Multiple Implementations Rules
+1. **Single implementation**: Automatically used, no `@Primary` needed
+2. **Multiple with `@Primary`**: The `@Primary` is the default when injecting the abstract class
+3. **Multiple without `@Primary`**: Throws error at resolution time
+4. **Multiple with `@Named`**: Use qualified injection to select specific implementations
+:::
+
+## Named Implementations with @Named
+
+When you have multiple implementations and need to inject specific ones by name (rather than just a default), use the `@Named` decorator:
+
+### Define Named Implementations
+
+```typescript
+// mailers/smtp.mailer.ts
+import { Injectable, Implements, Named, Primary } from '@riktajs/core';
+
+abstract class Mailer {
+  abstract send(to: string, body: string): Promise<void>;
+}
+
+@Injectable()
+@Implements(Mailer)
+@Named('smtp')
+@Primary() // Also the default when no name is specified
+export class SmtpMailer extends Mailer {
+  async send(to: string, body: string): Promise<void> {
+    console.log(`[SMTP] Sending to ${to}`);
+  }
+}
+
+// mailers/sendgrid.mailer.ts
+@Injectable()
+@Implements(Mailer)
+@Named('sendgrid')
+export class SendGridMailer extends Mailer {
+  async send(to: string, body: string): Promise<void> {
+    console.log(`[SendGrid] Sending to ${to}`);
+  }
+}
+
+// mailers/mailgun.mailer.ts
+@Injectable()
+@Implements(Mailer)
+@Named('mailgun')
+export class MailgunMailer extends Mailer {
+  async send(to: string, body: string): Promise<void> {
+    console.log(`[Mailgun] Sending to ${to}`);
+  }
+}
+```
+
+### Inject by Name
+
+Use `@Autowired(Token, 'name')` to inject a specific named implementation:
+
+```typescript
+@Injectable()
+export class MailService {
+  // Default (Primary) - SmtpMailer
+  @Autowired(Mailer)
+  private defaultMailer!: Mailer;
+
+  // Explicit named injection
+  @Autowired(Mailer, 'smtp')
+  private smtpMailer!: Mailer;
+
+  @Autowired(Mailer, 'sendgrid')
+  private sendgridMailer!: Mailer;
+
+  @Autowired(Mailer, 'mailgun')
+  private mailgunMailer!: Mailer;
+
+  async sendWithFallback(to: string, body: string): Promise<void> {
+    try {
+      await this.sendgridMailer.send(to, body);
+    } catch {
+      // Fallback to SMTP
+      await this.smtpMailer.send(to, body);
+    }
+  }
+}
+```
+
+### Constructor Injection with Names
+
+Named injection also works with constructor parameters:
+
+```typescript
+@Injectable()
+export class EmailCampaignService {
+  constructor(
+    @Autowired(Mailer, 'sendgrid') private bulkMailer: Mailer,
+    @Autowired(Mailer, 'smtp') private transactionalMailer: Mailer
+  ) {}
+
+  async sendCampaign(recipients: string[], body: string): Promise<void> {
+    // Use SendGrid for bulk emails
+    await Promise.all(recipients.map(r => this.bulkMailer.send(r, body)));
+  }
+
+  async sendReceipt(to: string, receipt: string): Promise<void> {
+    // Use SMTP for transactional emails
+    await this.transactionalMailer.send(to, receipt);
+  }
+}
+```
+
+:::note Error Handling
+If you request a name that doesn't exist, Rikta will throw a descriptive error:
+```
+No implementation named 'unknown' found for abstract class Mailer.
+Available names: smtp, sendgrid, mailgun
+```
+:::
 
 ## DI in Queue Processors
 
