@@ -411,9 +411,3 @@ Check out the [passport-example](/examples/passport-example) for a complete work
 - Protected routes
 - Session management
 - Password hashing
-
-## Next Steps
-
-- [JWT Authentication](./jwt) - Stateless token-based auth
-- [Google OAuth2](./google-oauth) - Social login integration
-- [Guards](../fundamentals/guards) - Advanced route protection

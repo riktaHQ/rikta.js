@@ -526,9 +526,3 @@ async validate(payload: JwtPayload, token: string): Promise<User> {
 | Token Size | Larger | Smaller (session ID) |
 | Security | Token can't be revoked easily | Can be invalidated immediately |
 | Use Case | APIs, Mobile, SPAs | Traditional web apps |
-
-## Next Steps
-
-- [Local Authentication](./authentication) - Username/password with sessions
-- [Google OAuth2](./google-oauth) - Social login integration
-- [Guards](../fundamentals/guards) - Advanced route protection

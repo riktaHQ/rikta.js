@@ -694,9 +694,3 @@ async validate(accessToken: string, refreshToken: string, profile: Profile) {
   // Continue...
 }
 ```
-
-## Next Steps
-
-- [Local Authentication](./authentication) - Username/password auth
-- [JWT Authentication](./jwt) - Stateless token-based auth
-- [Guards](../fundamentals/guards) - Advanced route protection
