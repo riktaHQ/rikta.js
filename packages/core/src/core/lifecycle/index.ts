@@ -1,5 +1,5 @@
 // Lifecycle exports
-export * from './event-bus';
-export * from './on.decorator';
-export * from './interfaces';
+export * from './event-bus.js';
+export * from './on.decorator.js';
+export * from './interfaces.js';
 

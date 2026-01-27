@@ -1,9 +1,16 @@
 {
   "name": "@riktajs/typeorm",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "TypeORM integration for Rikta Framework with lifecycle-based connection management",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "files": [
     "dist"
   ],
@@ -29,7 +36,7 @@
     "mysql",
     "sqlite"
   ],
-  "author": "",
+  "author": "riktar",
   "license": "MIT",
   "peerDependencies": {
     "@riktajs/core": ">=0.5.0",

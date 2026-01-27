@@ -3,10 +3,10 @@ export {
   profiler, 
   setGlobalProfiler, 
   getGlobalProfiler 
-} from './performance-profiler';
+} from './performance-profiler.js';
 
 export type { 
   PerformanceMetric, 
   RouteMetric, 
   BootstrapMetrics 
-} from './performance-profiler';
+} from './performance-profiler.js';

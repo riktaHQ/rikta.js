@@ -9,7 +9,7 @@ import {
   NotificationStrategy, 
   NotificationFactory,
   NotificationChannel 
-} from '../strategies';
+} from '../strategies/index.js';
 
 /**
  * DTO for sending notifications

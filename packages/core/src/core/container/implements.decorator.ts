@@ -1,12 +1,12 @@
 import 'reflect-metadata';
-import { Constructor, AnyConstructor } from '../types';
+import { Constructor, AnyConstructor } from '../types.js';
 import { 
   setImplementsMetadata, 
   setPrimaryMetadata,
   markAsAbstract,
   IMPLEMENTS_METADATA 
-} from './abstract-class.utils';
-import { registry } from '../registry';
+} from './abstract-class.utils.js';
+import { registry } from '../registry.js';
 
 /**
  * @Implements() decorator

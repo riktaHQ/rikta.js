@@ -1,7 +1,7 @@
-import { Constructor } from './types';
+import { Constructor } from './types.js';
 import { 
   ConfigProviderAlreadyRegisteredException,
-} from './exceptions/config.exceptions';
+} from './exceptions/config.exceptions.js';
 
 /**
  * Config provider registration info

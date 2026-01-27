@@ -1,4 +1,4 @@
-import { ExecutionContext } from '../guards/execution-context';
+import { ExecutionContext } from '../guards/execution-context.js';
 
 /**
  * Interceptor interface for request/response manipulation

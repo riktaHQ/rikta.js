@@ -1,8 +1,8 @@
 import 'reflect-metadata';
-import { PROVIDER_METADATA, CONFIG_PROVIDER_METADATA } from '../constants';
-import { Token } from '../container/injection-token';
-import { registry } from '../registry';
-import { Constructor } from '../types';
+import { PROVIDER_METADATA, CONFIG_PROVIDER_METADATA } from '../constants.js';
+import { Token } from '../container/injection-token.js';
+import { registry } from '../registry.js';
+import { Constructor } from '../types.js';
 
 /**
  * Provider metadata stored on the class

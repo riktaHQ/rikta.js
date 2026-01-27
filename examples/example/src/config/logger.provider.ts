@@ -1,6 +1,6 @@
 import { Provider, Autowired } from '@riktajs/core';
-import { LOGGER, Logger, APP_CONFIG } from './app.config';
-import {AppConfigProvider} from "./app-config.provider";
+import { LOGGER, Logger, APP_CONFIG } from './app.config.js';
+import {AppConfigProvider} from "./app-config.provider.js";
 
 /**
  * Provides a logger instance

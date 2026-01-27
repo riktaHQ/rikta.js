@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { Constructor } from '../types';
+import { Constructor } from '../types.js';
 
 /**
  * Metadata key for @Catch() decorator

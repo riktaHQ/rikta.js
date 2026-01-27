@@ -1,6 +1,6 @@
 import { Injectable, Autowired, OnApplicationListen } from '@riktajs/core';
-import { APP_CONFIG, Logger, LOGGER } from '../config/app.config';
-import {AppConfigProvider} from "../config/app-config.provider";
+import { APP_CONFIG, Logger, LOGGER } from '../config/app.config.js';
+import {AppConfigProvider} from "../config/app-config.provider.js";
 
 export interface HealthStatus {
   status: 'ok' | 'degraded' | 'down';

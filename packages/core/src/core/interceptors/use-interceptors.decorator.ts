@@ -1,7 +1,7 @@
 import 'reflect-metadata';
-import { INTERCEPTORS_METADATA } from '../constants';
-import { Constructor } from '../types';
-import type { Interceptor } from './interceptor.interface';
+import { INTERCEPTORS_METADATA } from '../constants.js';
+import { Constructor } from '../types.js';
+import type { Interceptor } from './interceptor.interface.js';
 
 /**
  * Type for interceptor classes

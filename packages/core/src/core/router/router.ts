@@ -1,26 +1,26 @@
 import 'reflect-metadata';
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { Container } from '../container/container';
-import { requestScopeStorage } from '../container/request-scope';
+import { Container } from '../container/container.js';
+import { requestScopeStorage } from '../container/request-scope.js';
 import { 
   CONTROLLER_METADATA, 
   ROUTES_METADATA, 
   PARAM_METADATA, 
   HTTP_CODE_METADATA,
   ParamType 
-} from '../constants';
-import { Constructor, RouteDefinition, RouteContext } from '../types';
-import { ParamMetadata } from '../decorators/param.decorator';
-import { getCustomParamMetadata, CustomParamMetadata } from '../decorators/create-param-decorator';
-import { ValidationException } from '../exceptions/validation.exception';
-import { ForbiddenException } from '../exceptions/exceptions';
-import { ExecutionContext, ExecutionContextImpl } from '../guards/execution-context';
-import { getGuardsMetadata, GuardClass } from '../guards/use-guards.decorator';
-import type { CanActivate } from '../guards/can-activate.interface';
-import { getMiddlewareMetadata, MiddlewareClass } from '../middleware/use-middleware.decorator';
-import type { RiktaMiddleware } from '../middleware/rikta-middleware.interface';
-import { getInterceptorsMetadata, InterceptorClass } from '../interceptors/use-interceptors.decorator';
-import type { Interceptor, CallHandler } from '../interceptors/interceptor.interface';
+} from '../constants.js';
+import { Constructor, RouteDefinition, RouteContext } from '../types.js';
+import { ParamMetadata } from '../decorators/param.decorator.js';
+import { getCustomParamMetadata, CustomParamMetadata } from '../decorators/create-param-decorator.js';
+import { ValidationException } from '../exceptions/validation.exception.js';
+import { ForbiddenException } from '../exceptions/exceptions.js';
+import { ExecutionContext, ExecutionContextImpl } from '../guards/execution-context.js';
+import { getGuardsMetadata, GuardClass } from '../guards/use-guards.decorator.js';
+import type { CanActivate } from '../guards/can-activate.interface.js';
+import { getMiddlewareMetadata, MiddlewareClass } from '../middleware/use-middleware.decorator.js';
+import type { RiktaMiddleware } from '../middleware/rikta-middleware.interface.js';
+import { getInterceptorsMetadata, InterceptorClass } from '../interceptors/use-interceptors.decorator.js';
+import type { Interceptor, CallHandler } from '../interceptors/interceptor.interface.js';
 
 /**
  * Compiled parameter extractor function type

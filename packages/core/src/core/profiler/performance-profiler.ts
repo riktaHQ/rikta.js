@@ -1,4 +1,4 @@
-import { EventBus } from '../lifecycle/event-bus';
+import { EventBus } from '../lifecycle/event-bus.js';
 
 /**
  * Performance metrics for a single operation

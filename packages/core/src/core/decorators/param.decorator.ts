@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import type { ZodType } from 'zod';
-import { PARAM_METADATA, ParamType } from '../constants';
+import { PARAM_METADATA, ParamType } from '../constants.js';
 
 /**
  * Parameter metadata structure

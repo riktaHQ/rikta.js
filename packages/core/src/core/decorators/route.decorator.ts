@@ -1,6 +1,6 @@
 import 'reflect-metadata';
-import { ROUTES_METADATA, HTTP_CODE_METADATA } from '../constants';
-import { HttpMethod, RouteDefinition } from '../types';
+import { ROUTES_METADATA, HTTP_CODE_METADATA } from '../constants.js';
+import { HttpMethod, RouteDefinition } from '../types.js';
 
 /**
  * Creates a route decorator for a specific HTTP method

@@ -1,10 +1,16 @@
 {
   "name": "@riktajs/cli",
-  "version": "0.2.7",
+  "version": "0.2.9",
   "description": "CLI tool for Rikta framework - scaffold, develop and build projects",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "bin": {
     "rikta": "dist/index.js"
   },
@@ -29,7 +35,7 @@
     "backend",
     "framework"
   ],
-  "author": "",
+  "author": "riktar",
   "license": "MIT",
   "dependencies": {
     "@inquirer/prompts": "^7.3.2",

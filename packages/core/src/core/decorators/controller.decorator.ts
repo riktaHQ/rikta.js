@@ -1,7 +1,7 @@
 import 'reflect-metadata';
-import { CONTROLLER_METADATA, INJECTABLE_METADATA } from '../constants';
-import { container } from '../container/container';
-import { registry } from '../registry';
+import { CONTROLLER_METADATA, INJECTABLE_METADATA } from '../constants.js';
+import { container } from '../container/container.js';
+import { registry } from '../registry.js';
 
 /**
  * Controller options

@@ -34,7 +34,7 @@
  * ```
  */
 
-import { Constructor } from '../types';
+import { Constructor } from '../types.js';
 
 /**
  * Metadata key for storing abstract class implementations

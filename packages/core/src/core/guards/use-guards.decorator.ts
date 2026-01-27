@@ -1,7 +1,7 @@
 import 'reflect-metadata';
-import { GUARDS_METADATA } from '../constants';
-import type { Constructor } from '../types';
-import type { CanActivate } from './can-activate.interface';
+import { GUARDS_METADATA } from '../constants.js';
+import type { Constructor } from '../types.js';
+import type { CanActivate } from './can-activate.interface.js';
 
 /**
  * Type for guard constructors

@@ -1,5 +1,5 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import type { Constructor } from '../types';
+import type { Constructor } from '../types.js';
 
 /**
  * HTTP argument host interface

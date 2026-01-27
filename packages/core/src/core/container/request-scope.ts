@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { Token } from './injection-token';
+import { Token } from './injection-token.js';
 
 /**
  * Request-scoped storage for dependency injection

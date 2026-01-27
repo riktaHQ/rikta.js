@@ -1,5 +1,5 @@
 import { Injectable, On, Autowired } from '@riktajs/core';
-import { Logger, LOGGER } from '../config/app.config';
+import { Logger, LOGGER } from '../config/app.config.js';
 
 /**
  * Monitoring Service

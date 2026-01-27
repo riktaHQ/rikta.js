@@ -1,7 +1,7 @@
 import fg from 'fast-glob';
 import fs from 'fs/promises';
 import path from 'path';
-import { DiscoveryException, DiscoveryFailure, DiscoveryOptions } from './exceptions/discovery.exception';
+import { DiscoveryException, DiscoveryFailure, DiscoveryOptions } from './exceptions/discovery.exception.js';
 
 /**
  * Default patterns to exclude from discovery
@@ -49,12 +49,15 @@ const DECORATOR_PATTERNS = [
   /@Controller\s*\(/,    // @Controller() or @Controller('/path')
   /@Injectable\s*\(/,    // @Injectable() or @Injectable({ scope: 'singleton' })
   /@Provider\s*\(/,      // @Provider(TOKEN)
-  /@Provider\s*\(/, // @Provider(TOKEN)
-  // Compiled JavaScript patterns (e.g., (0, core_1.Controller)('/path'))
+  // Compiled JavaScript CommonJS patterns (e.g., (0, core_1.Controller)('/path'))
   /\.\s*Controller\s*\)\s*\(/,
   /\.\s*Injectable\s*\)\s*\(/,
   /\.\s*Provider\s*\)\s*\(/,
   /\.\s*ProviderConfig\s*\)\s*\(/,
+  // ESM compiled patterns - import statements with decorators
+  /import\s*{\s*[^}]*\bController\b[^}]*}\s*from\s*['"]@riktajs\/core['"]/,
+  /import\s*{\s*[^}]*\bInjectable\b[^}]*}\s*from\s*['"]@riktajs\/core['"]/,
+  /import\s*{\s*[^}]*\bProvider\b[^}]*}\s*from\s*['"]@riktajs\/core['"]/,
 ];
 
 /**
@@ -167,8 +170,17 @@ export async function discoverModules(
   
   for (const file of riktaFiles) {
     try {
-      // Convert to proper import path
-      const importPath = file.replace(/\.ts$/, '');
+      // Convert to proper import path for ESM
+      // For .js files, use the file:// URL format which works in ESM
+      // For .ts files (dev mode), remove the extension as ts-node handles it
+      let importPath: string;
+      if (file.endsWith('.js')) {
+        // ESM requires file:// URLs for absolute paths
+        importPath = `file://${file}`;
+      } else {
+        // TypeScript files - remove extension for ts-node compatibility
+        importPath = file.replace(/\.ts$/, '');
+      }
       await import(importPath);
       importedFiles.push(file);
     } catch (err) {

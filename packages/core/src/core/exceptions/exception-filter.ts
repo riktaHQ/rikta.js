@@ -1,5 +1,5 @@
 import type { FastifyRequest, FastifyReply, FastifyError } from 'fastify';
-import { HttpException } from './http-exception';
+import { HttpException } from './http-exception.js';
 
 /**
  * Exception context passed to filters

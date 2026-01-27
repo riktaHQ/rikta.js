@@ -30,8 +30,8 @@ import {
   CreateUserDto,
   UpdateUserDto,
   PaginationQuery,
-} from '../services/user.service';
-import { LoggerMiddleware, ResponseTimeMiddleware } from '../middleware';
+} from '../services/user.service.js';
+import { LoggerMiddleware, ResponseTimeMiddleware } from '../middleware/index.js';
 // Import custom decorators
 import { 
   ClientIp, 
@@ -41,7 +41,7 @@ import {
   Tracked, 
   Public, 
   Cached 
-} from '../decorators';
+} from '../decorators/index.js';
 
 // Response schema for array of users
 const UserArraySchema = z.array(z.object({

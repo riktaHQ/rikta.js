@@ -1,27 +1,27 @@
 import 'reflect-metadata';
 import Fastify, { FastifyInstance } from 'fastify';
-import { Container } from './container/container';
-import { Router } from './router/router';
-import { registry } from './registry';
-import { discoverModules, getCallerDirectory } from './discovery';
-import { ProviderMetadata } from './decorators/provider.decorator';
-import { EventBus } from './lifecycle/event-bus';
-import { OnEventMetadata, ON_EVENT_METADATA } from './lifecycle/on.decorator';
+import { Container } from './container/container.js';
+import { Router } from './router/router.js';
+import { registry } from './registry.js';
+import { discoverModules, getCallerDirectory } from './discovery.js';
+import { ProviderMetadata } from './decorators/provider.decorator.js';
+import { EventBus } from './lifecycle/event-bus.js';
+import { OnEventMetadata, ON_EVENT_METADATA } from './lifecycle/on.decorator.js';
 import { 
   OnProviderInit,
   OnProviderDestroy,
   OnApplicationListen,
   OnApplicationShutdown 
-} from './lifecycle/interfaces';
-import { Constructor, RiktaConfig, RiktaApplication, InjectableOptions } from './types';
-import { DEFAULT_CONFIG, PROVIDER_METADATA, INJECTABLE_METADATA } from './constants';
+} from './lifecycle/interfaces.js';
+import { Constructor, RiktaConfig, RiktaApplication, InjectableOptions } from './types.js';
+import { DEFAULT_CONFIG, PROVIDER_METADATA, INJECTABLE_METADATA } from './constants.js';
 import { 
   GlobalExceptionFilter, 
   ExceptionFilter, 
   createExceptionHandler,
   getCatchMetadata
-} from './exceptions';
-import { loadEnvFiles } from './config/env-loader';
+} from './exceptions/index.js';
+import { loadEnvFiles } from './config/env-loader.js';
 
 /**
  * RiktaFactory - Bootstrap the application

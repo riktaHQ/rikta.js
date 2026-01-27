@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { ExecutionContext } from '../guards/execution-context';
+import { ExecutionContext } from '../guards/execution-context.js';
 
 /**
  * Metadata key for custom parameter decorators

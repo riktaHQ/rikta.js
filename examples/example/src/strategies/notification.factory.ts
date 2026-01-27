@@ -1,8 +1,8 @@
 import { Injectable, Autowired } from '@riktajs/core';
-import { NotificationStrategy } from './notification.strategy';
-import { EmailStrategy } from './email.strategy';
-import { SmsStrategy } from './sms.strategy';
-import { PushStrategy } from './push.strategy';
+import { NotificationStrategy } from './notification.strategy.js';
+import { EmailStrategy } from './email.strategy.js';
+import { SmsStrategy } from './sms.strategy.js';
+import { PushStrategy } from './push.strategy.js';
 
 /**
  * Notification Channel Type

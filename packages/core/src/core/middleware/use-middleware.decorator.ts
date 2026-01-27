@@ -1,7 +1,7 @@
 import 'reflect-metadata';
-import { MIDDLEWARE_METADATA } from '../constants';
-import type { Constructor } from '../types';
-import type { RiktaMiddleware } from './rikta-middleware.interface';
+import { MIDDLEWARE_METADATA } from '../constants.js';
+import type { Constructor } from '../types.js';
+import type { RiktaMiddleware } from './rikta-middleware.interface.js';
 
 /**
  * Type for middleware constructors

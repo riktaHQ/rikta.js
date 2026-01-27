@@ -5,7 +5,7 @@
  * Demonstrates the @Middleware decorator for cross-cutting concerns.
  */
 import { Middleware, RiktaMiddleware, NextFunction, Autowired, FastifyRequest, FastifyReply } from '@riktajs/core';
-import { MonitoringService } from '../services/monitoring.service';
+import { MonitoringService } from '../services/monitoring.service.js';
 
 @Middleware()
 export class LoggerMiddleware implements RiktaMiddleware {

@@ -2,6 +2,7 @@
   "name": "rikta-queue-demo",
   "version": "1.0.0",
   "description": "Queue demo project for @riktajs/queue",
+  "type": "module",
   "main": "dist/main.js",
   "types": "dist/main.d.ts",
   "files": [

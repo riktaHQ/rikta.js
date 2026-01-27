@@ -1,6 +1,6 @@
 import { z, ZodSchema } from 'zod';
-import { getConfigPropertyMappings } from '../decorators/config-property.decorator';
-import { loadEnvFiles } from './env-loader';
+import { getConfigPropertyMappings } from '../decorators/config-property.decorator.js';
+import { loadEnvFiles } from './env-loader.js';
 
 /**
  * Exception thrown when config validation fails

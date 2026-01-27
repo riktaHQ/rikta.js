@@ -1,8 +1,8 @@
 // HTTP Exception
-export { HttpException, HttpExceptionBody, HttpExceptionResponse } from './http-exception';
+export { HttpException, HttpExceptionBody, HttpExceptionResponse } from './http-exception.js';
 
 // Validation Exception (Zod)
-export { ValidationException, ValidationErrorDetails } from './validation.exception';
+export { ValidationException, ValidationErrorDetails } from './validation.exception.js';
 
 // Specific Exceptions
 export {
@@ -26,7 +26,7 @@ export {
   BadGatewayException,
   ServiceUnavailableException,
   GatewayTimeoutException,
-} from './exceptions';
+} from './exceptions.js';
 
 // Exception Filter
 export { 
@@ -36,21 +36,21 @@ export {
   GlobalExceptionFilter,
   GlobalExceptionFilterOptions,
   createExceptionHandler,
-} from './exception-filter';
+} from './exception-filter.js';
 
 // Catch Decorator
-export { Catch, CatchMetadata, CATCH_METADATA, getCatchMetadata } from './catch.decorator';
+export { Catch, CatchMetadata, CATCH_METADATA, getCatchMetadata } from './catch.decorator.js';
 
 // Config Exceptions
 export {
   ConfigProviderAlreadyRegisteredException,
   ConfigProviderNotFoundException,
   ConfigProviderInstantiationException,
-} from './config.exceptions';
+} from './config.exceptions.js';
 
 // Discovery Exceptions
 export {
   DiscoveryException,
   DiscoveryFailure,
   DiscoveryOptions,
-} from './discovery.exception';
+} from './discovery.exception.js';

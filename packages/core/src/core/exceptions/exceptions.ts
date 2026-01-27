@@ -1,4 +1,4 @@
-import { HttpException, HttpExceptionBody } from './http-exception';
+import { HttpException, HttpExceptionBody } from './http-exception.js';
 
 /** 400 Bad Request - server cannot process due to client error. */
 export class BadRequestException extends HttpException {

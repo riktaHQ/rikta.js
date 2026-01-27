@@ -1,5 +1,5 @@
 import { Injectable, Implements, Primary, Named } from '@riktajs/core';
-import { NotificationStrategy } from './notification.strategy';
+import { NotificationStrategy } from './notification.strategy.js';
 
 /**
  * Email Notification Strategy

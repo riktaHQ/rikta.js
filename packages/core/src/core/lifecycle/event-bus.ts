@@ -1,5 +1,5 @@
-import { Injectable } from '../decorators/injectable.decorator';
-import { Constructor } from '../types';
+import { Injectable } from '../decorators/injectable.decorator.js';
+import { Constructor } from '../types.js';
 
 /**
  * Event payload types for built-in lifecycle events

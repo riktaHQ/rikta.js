@@ -1,4 +1,4 @@
-import type { ExecutionContext } from './execution-context';
+import type { ExecutionContext } from './execution-context.js';
 
 /**
  * CanActivate Interface

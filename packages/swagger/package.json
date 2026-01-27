@@ -1,10 +1,16 @@
 {
   "name": "@riktajs/swagger",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Automatic OpenAPI/Swagger documentation generation for Rikta Framework",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "files": [
     "dist"
   ],
@@ -28,7 +34,7 @@
     "decorators",
     "api-docs"
   ],
-  "author": "",
+  "author": "riktar",
   "license": "MIT",
   "peerDependencies": {
     "@riktajs/core": ">=0.4.3",

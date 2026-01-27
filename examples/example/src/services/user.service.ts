@@ -1,6 +1,6 @@
 import { Injectable, Autowired, z } from '@riktajs/core';
-import { DatabaseService, Entity } from './database.service';
-import { Logger, LOGGER } from '../config/app.config';
+import { DatabaseService, Entity } from './database.service.js';
+import { Logger, LOGGER } from '../config/app.config.js';
 
 // ============================================================================
 // Zod Schemas with automatic type inference

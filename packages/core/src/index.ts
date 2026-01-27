@@ -41,8 +41,8 @@
  */
 
 // Re-export everything from core
-export * from './core';
+export * from './core/index.js';
 
 // Default export for convenience
-export { RiktaFactory as default } from './core/application';
+export { RiktaFactory as default } from './core/application.js';
 

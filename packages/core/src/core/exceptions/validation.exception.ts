@@ -1,5 +1,5 @@
 import type { ZodError, ZodIssue } from 'zod';
-import { HttpException } from './http-exception';
+import { HttpException } from './http-exception.js';
 
 /**
  * Structured validation error details

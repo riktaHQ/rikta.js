@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import {Container} from "@rikta/core/container";
+import type { Container } from './container/container.js';
 
 /**
  * Generic constructor type for class instantiation
@@ -242,8 +242,8 @@ export interface Guard {
 // Re-exported from ./lifecycle/index.ts for convenience
 
 // Forward declaration to avoid circular imports
-import type { Router } from './router/router';
-import type { EventBus } from './lifecycle/event-bus';
+import type { Router } from './router/router.js';
+import type { EventBus } from './lifecycle/event-bus.js';
 
 /**
  * Application instance interface

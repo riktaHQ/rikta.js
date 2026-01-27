@@ -15,7 +15,7 @@
 import { Rikta } from '@riktajs/core';
 import { swaggerPlugin } from '@riktajs/swagger';
 import { registerMCPServer } from '@riktajs/mcp';
-import { APP_CONFIG } from "./config/app.config";
+import { APP_CONFIG } from "./config/app.config.js";
 
 async function bootstrap() {
   // .env files are loaded automatically at the start of Rikta.create()
@@ -29,7 +29,7 @@ async function bootstrap() {
   });
 
   const container = app.getContainer();
-  const config = container.resolve(APP_CONFIG);
+  const config = container.resolve<{ name: string }>(APP_CONFIG);
 
   // Register Swagger plugin for automatic API documentation
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -1,9 +1,9 @@
 import {Controller, Get, Autowired, UseMiddleware} from '@riktajs/core';
 import {ApiTags, ApiOperation, ApiResponse} from '@riktajs/swagger';
-import {HealthService, HealthStatus} from '../services/health.service';
-import {APP_CONFIG} from '../config/app.config';
-import {AppConfigProvider} from "../config/app-config.provider";
-import {LoggerMiddleware, ResponseTimeMiddleware} from '../middleware';
+import {HealthService, HealthStatus} from '../services/health.service.js';
+import {APP_CONFIG} from '../config/app.config.js';
+import {AppConfigProvider} from "../config/app-config.provider.js";
+import {LoggerMiddleware, ResponseTimeMiddleware} from '../middleware/index.js';
 
 /**
  * Root Application Controller

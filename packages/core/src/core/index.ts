@@ -1,20 +1,20 @@
 // Core exports
-export * from './types';
-export * from './constants';
-export * from './container';
-export * from './registry';
-export * from './discovery';
-export * from './lifecycle';
-export * from './router/router';
-export * from './application';
-export * from './decorators';
-export * from './exceptions';
-export * from './guards';
-export * from './middleware';
-export * from './interceptors';
-export * from './config';
-export * from './metadata';
-export * from './profiler';
+export * from './types.js';
+export * from './constants.js';
+export * from './container/index.js';
+export * from './registry.js';
+export * from './discovery.js';
+export * from './lifecycle/index.js';
+export * from './router/router.js';
+export * from './application.js';
+export * from './decorators/index.js';
+export * from './exceptions/index.js';
+export * from './guards/index.js';
+export * from './middleware/index.js';
+export * from './interceptors/index.js';
+export * from './config/index.js';
+export * from './metadata.js';
+export * from './profiler/index.js';
 
 // Re-export Zod for convenience
 // This allows users to import everything from '@riktajs/core':

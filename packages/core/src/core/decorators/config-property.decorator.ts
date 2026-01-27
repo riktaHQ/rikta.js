@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { CONFIG_PROPERTY_METADATA } from '../constants';
+import { CONFIG_PROPERTY_METADATA } from '../constants.js';
 
 /**
  * Metadata for a single config property mapping

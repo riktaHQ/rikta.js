@@ -1,6 +1,6 @@
 import 'reflect-metadata';
-import { INJECT_METADATA, AUTOWIRED_METADATA } from '../constants';
-import { Token } from '../container/injection-token';
+import { INJECT_METADATA, AUTOWIRED_METADATA } from '../constants.js';
+import { Token } from '../container/injection-token.js';
 
 /**
  * Metadata for autowired parameters/properties

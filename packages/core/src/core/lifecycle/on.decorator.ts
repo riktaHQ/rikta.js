@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { LifecycleEvent } from './event-bus';
+import { LifecycleEvent } from './event-bus.js';
 
 export const ON_EVENT_METADATA = Symbol('on:event:metadata');
 

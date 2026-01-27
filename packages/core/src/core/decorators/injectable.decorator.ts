@@ -1,8 +1,8 @@
 import 'reflect-metadata';
-import { INJECTABLE_METADATA } from '../constants';
-import { InjectableOptions } from '../types';
-import { container } from '../container/container';
-import { registry } from '../registry';
+import { INJECTABLE_METADATA } from '../constants.js';
+import { InjectableOptions } from '../types.js';
+import { container } from '../container/container.js';
+import { registry } from '../registry.js';
 
 /**
  * @Injectable() decorator

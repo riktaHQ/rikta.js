@@ -1,6 +1,6 @@
 import { Injectable, Autowired, OnProviderInit, OnProviderDestroy } from '@riktajs/core';
-import {Logger, DATABASE_CONFIG, LOGGER } from '../config/app.config';
-import {DatabaseConfigProvider} from "../config/database-config.provider";
+import {Logger, DATABASE_CONFIG, LOGGER } from '../config/app.config.js';
+import {DatabaseConfigProvider} from "../config/database-config.provider.js";
 
 /**
  * Base entity interface

@@ -6,9 +6,9 @@ import {
   HTTP_CODE_METADATA,
   GUARDS_METADATA,
   ZOD_SCHEMA_METADATA,
-} from './constants';
-import type { RouteDefinition, ControllerMetadata } from './types';
-import type { ParamMetadata } from './decorators/param.decorator';
+} from './constants.js';
+import type { RouteDefinition, ControllerMetadata } from './types.js';
+import type { ParamMetadata } from './decorators/param.decorator.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Constructor<T = unknown> = new (...args: any[]) => T;

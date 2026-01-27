@@ -1,2 +1,2 @@
-export * from './abstract-config-provider';
-export * from './env-loader';
+export * from './abstract-config-provider.js';
+export * from './env-loader.js';

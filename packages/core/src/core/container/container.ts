@@ -1,11 +1,11 @@
 import 'reflect-metadata';
-import { Constructor, ProviderScope, InjectableOptions } from '../types';
-import { INJECT_METADATA, AUTOWIRED_METADATA } from '../constants';
-import { Token, InjectionToken, ProviderDefinition, ValueProvider, FactoryProvider, ClassProvider, ExistingProvider } from './injection-token';
-import { AutowiredMetadata } from '../decorators/autowired.decorator';
-import { registry } from '../registry';
-import { isAbstractClass } from './abstract-class.utils';
-import { requestScopeStorage } from './request-scope';
+import { Constructor, ProviderScope, InjectableOptions } from '../types.js';
+import { INJECT_METADATA, AUTOWIRED_METADATA } from '../constants.js';
+import { Token, InjectionToken, ProviderDefinition, ValueProvider, FactoryProvider, ClassProvider, ExistingProvider } from './injection-token.js';
+import { AutowiredMetadata } from '../decorators/autowired.decorator.js';
+import { registry } from '../registry.js';
+import { isAbstractClass } from './abstract-class.utils.js';
+import { requestScopeStorage } from './request-scope.js';
 
 /**
  * Dependency Injection Container

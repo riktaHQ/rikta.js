@@ -21,8 +21,8 @@
  * ```
  */
 
-export { NotificationStrategy } from './notification.strategy';
-export { EmailStrategy } from './email.strategy';
-export { SmsStrategy } from './sms.strategy';
-export { PushStrategy } from './push.strategy';
-export { NotificationFactory, NotificationChannel } from './notification.factory';
+export { NotificationStrategy } from './notification.strategy.js';
+export { EmailStrategy } from './email.strategy.js';
+export { SmsStrategy } from './sms.strategy.js';
+export { PushStrategy } from './push.strategy.js';
+export { NotificationFactory, NotificationChannel } from './notification.factory.js';
