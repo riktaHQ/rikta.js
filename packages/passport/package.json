@@ -1,6 +1,6 @@
 {
   "name": "@riktajs/passport",
-  "version": "0.4.0",
+  "version": "0.1.0",
   "description": "PassportJS authentication integration for Rikta Framework with session management and strategy decorators",
   "type": "module",
   "main": "dist/index.js",
