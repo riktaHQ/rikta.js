@@ -401,13 +401,3 @@ async login(@Body() credentials: LoginDto) {
   }
 }
 ```
-
-## Complete Example
-
-Check out the [passport-example](/examples/passport-example) for a complete working application with:
-
-- User registration
-- Login/logout
-- Protected routes
-- Session management
-- Password hashing
