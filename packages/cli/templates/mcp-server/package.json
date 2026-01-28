@@ -2,7 +2,6 @@
   "name": "my-rikta-mcp-server",
   "version": "0.1.0",
   "description": "A minimal MCP server built with Rikta",
-  "type": "module",
   "main": "dist/index.js",
   "scripts": {
     "dev": "rikta dev",
@@ -19,11 +18,11 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@riktajs/core": "^0.10.1",
-    "@riktajs/mcp": "^0.4.1"
+    "@riktajs/core": "^0.10.3",
+    "@riktajs/mcp": "^0.10.3"
   },
   "devDependencies": {
-    "@riktajs/cli": "^0.3.3",
+    "@riktajs/cli": "^0.10.4",
     "@types/node": "^22.10.2",
     "typescript": "^5.7.2"
   },

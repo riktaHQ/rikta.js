@@ -107,7 +107,8 @@ export async function handleNew(
   logger.success('Target directory is available');
 
   logger.step(3, 4, `Creating project from template '${template}'...`);
-  const templateDir = path.resolve(__dirname, '../../templates', template);
+  // When bundled with tsup, __dirname is 'dist/', so we go up one level to find 'templates/'
+  const templateDir = path.resolve(__dirname, '../templates', template);
   logger.debug(`Template directory: ${templateDir}`);
 
   if (!await fs.pathExists(templateDir)) {

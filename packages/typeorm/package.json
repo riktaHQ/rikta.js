@@ -1,14 +1,21 @@
 {
   "name": "@riktajs/typeorm",
-  "version": "0.3.0",
+  "version": "0.10.3",
   "description": "TypeORM integration for Rikta Framework with lifecycle-based connection management",
   "type": "module",
-  "main": "dist/index.js",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     }
   },
   "files": [
@@ -17,7 +24,7 @@
   "scripts": {
     "clean": "rm -rf dist",
     "prebuild": "npm run clean",
-    "build": "tsc",
+    "build": "tsup",
     "dev": "tsc --watch",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -39,7 +46,7 @@
   "author": "riktar",
   "license": "MIT",
   "peerDependencies": {
-    "@riktajs/core": ">=0.5.0",
+    "@riktajs/core": ">=0.10.3",
     "reflect-metadata": ">=0.2.0",
     "typeorm": ">=0.3.0"
   },

@@ -1,11 +1,67 @@
 # Version Management Scripts
 
-Questi script gestiscono automaticamente la sincronizzazione della versione di `@riktajs/core` attraverso tutto il monorepo.
+Questi script gestiscono automaticamente il versioning nel monorepo Rikta.
 
 ## 📋 Script Disponibili
 
-### `sync-core-version.js`
+### `bump-version.js` - Unified Version Bumping (Lockstep)
+**NUOVO** - Aggiorna tutti i package alla stessa versione in un unico comando.
+
+**Cosa fa:**
+- Aggiorna `version` in tutti i package `@riktajs/*` alla stessa versione
+- Aggiorna `dependencies` interne con `^<version>`
+- Aggiorna `peerDependencies` interne con `>=<version>`
+- Approccio **lockstep versioning**: tutti i package avanzano insieme
+
+**Vantaggi lockstep:**
+- ✅ Più semplice gestire le release
+- ✅ Più facile per gli utenti (tutte le dipendenze hanno la stessa versione)
+- ✅ Comunicazione più chiara delle release
+- ✅ I package sono già strettamente accoppiati
+
+**Utilizzo:**
+```bash
+# Bump patch version (0.10.1 -> 0.10.2)
+npm run bump patch
+
+# Bump minor version (0.10.1 -> 0.11.0)
+npm run bump minor
+
+# Bump major version (0.10.1 -> 1.0.0)
+npm run bump major
+
+# Set specific version
+npm run bump 1.2.3
+
+# Skip confirmation (CI/automation)
+SKIP_CONFIRM=1 npm run bump patch
+```
+
+**Esempio output:**
+```
+📦 Bumping version across all packages...
+
+Current version: 0.10.1
+Bump type: patch
+New version: 0.10.2
+
+🔄 Updating package versions...
+
+  ✓ @riktajs/cli: 0.3.3 → 0.10.2
+  ✓ @riktajs/core: 0.10.1 → 0.10.2
+  ✓ @riktajs/mcp: 0.4.1 → 0.10.2
+  ✓ @riktajs/passport: 0.2.0 → 0.10.2
+  ✓ @riktajs/queue: 0.5.0 → 0.10.2
+  ✓ @riktajs/swagger: 0.3.0 → 0.10.2
+  ✓ @riktajs/typeorm: 0.3.0 → 0.10.2
+
+✅ Updated 7 package(s) to version 0.10.2!
+```
+
+### `sync-core-version.js` - Sync Core Version (Legacy)
 Sincronizza manualmente la versione di `@riktajs/core` in tutti i package dipendenti.
+
+**Nota:** Con `bump-version.js`, questo script è meno necessario ma può essere utile per fix manuali.
 
 **Cosa fa:**
 - Legge la versione corrente da `packages/core/package.json`
@@ -42,7 +98,40 @@ Hook automatico che si esegue dopo `npm version` nel package core.
 
 ## 🚀 Workflow di Rilascio
 
-### Rilasciare una nuova versione di @riktajs/core
+### Approccio Raccomandato: Lockstep Versioning
+
+```bash
+# 1. Assicurati che tutto sia committato
+git status
+
+# 2. Esegui i test
+npm test
+
+# 3. Bump version (usa patch, minor o major)
+npm run bump minor
+
+# 4. Verifica le modifiche
+git diff
+
+# 5. Rebuild per verificare
+npm run build
+
+# 6. Commit e tag
+git add .
+git commit -m "chore: release v0.11.0"
+git tag v0.11.0
+
+# 7. Push
+git push && git push --tags
+
+# 8. Pubblica su npm
+npm run publish:all
+
+# O dry run prima per verificare
+npm run publish:dry
+```
+
+### Rilasciare solo @riktajs/core (Deprecato)
 
 ```bash
 # Dalla root del monorepo
@@ -109,7 +198,79 @@ Il package swagger dichiara una peer dependency su core:
 
 Questa viene aggiornata automaticamente quando rilasci una nuova versione di core.
 
-## 🔧 Risoluzione Problemi
+## � Publishing
+
+### `publish-all.js` - Publish All Packages to npm
+
+Pubblica tutti i package `@riktajs/*` su npm in sequenza.
+
+**Cosa fa:**
+- Trova tutti i package pubblicabili (non private)
+- Pubblica ogni package su npm
+- **Continua anche se un package fallisce**
+- Mostra un report dettagliato al termine
+- Gestisce errori comuni (versione già pubblicata, OTP, login, ecc.)
+
+**Utilizzo:**
+```bash
+# Dry run - simula la pubblicazione
+npm run publish:dry
+
+# Pubblica tutti i package
+npm run publish:all
+
+# Con opzioni specifiche
+node scripts/publish-all.js --tag beta
+node scripts/publish-all.js --otp 123456
+node scripts/publish-all.js --dry-run --tag next
+```
+
+**Opzioni disponibili:**
+- `--dry-run` - Simula senza pubblicare
+- `--tag <tag>` - Dist-tag (default: latest)
+- `--access <public|restricted>` - Accesso package
+- `--otp <code>` - One-time password per 2FA
+
+**Esempio output:**
+```
+📦 Publishing packages to npm...
+
+Found 7 package(s) to publish:
+  • @riktajs/cli@0.10.2
+  • @riktajs/core@0.10.2
+  ...
+
+Logged in as: username
+
+[1/7] @riktajs/cli@0.10.2
+  ✓ Published successfully
+
+[2/7] @riktajs/core@0.10.2
+  ✗ Failed: Version already published
+
+═══════════════════════════════════════════════════════
+📊 SUMMARY
+═══════════════════════════════════════════════════════
+
+Total packages: 7
+✓ Successful: 6
+✗ Failed: 1
+
+✓ Successfully published:
+  • @riktajs/cli@0.10.2
+  ...
+
+✗ Failed to publish:
+  • @riktajs/core@0.10.2
+    Reason: Version already published
+```
+
+**Note sulla sicurezza:**
+- Richiede login npm (`npm login`)
+- Supporta 2FA con `--otp`
+- Usa sempre `--dry-run` per verificare prima
+
+## �🔧 Risoluzione Problemi
 
 ### Script fallisce durante preversion
 ```bash

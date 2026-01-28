@@ -1,14 +1,21 @@
 {
   "name": "@riktajs/core",
-  "version": "0.10.1",
+  "version": "0.10.3",
   "description": "A fast and modern TypeScript backend framework with zero-config autowiring, powered by Fastify",
   "type": "module",
-  "main": "dist/index.js",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     }
   },
   "files": [
@@ -17,7 +24,7 @@
   "scripts": {
     "clean": "rm -rf dist",
     "prebuild": "npm run clean",
-    "build": "tsc",
+    "build": "tsup",
     "dev": "ts-node-dev --respawn src/index.ts",
     "test": "vitest run",
     "test:watch": "vitest",

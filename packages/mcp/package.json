@@ -1,14 +1,21 @@
 {
   "name": "@riktajs/mcp",
-  "version": "0.4.1",
+  "version": "0.10.3",
   "description": "Model Context Protocol (MCP) integration for Rikta Framework - Connect AI assistants to your backend",
   "type": "module",
-  "main": "dist/index.js",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     }
   },
   "files": [
@@ -17,7 +24,7 @@
   "scripts": {
     "clean": "rm -rf dist",
     "prebuild": "npm run clean",
-    "build": "tsc",
+    "build": "tsup",
     "dev": "tsc --watch",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -40,7 +47,7 @@
   "author": "riktar",
   "license": "MIT",
   "peerDependencies": {
-    "@riktajs/core": ">=0.4.3",
+    "@riktajs/core": ">=0.10.3",
     "fastify": ">=5.0.0",
     "reflect-metadata": ">=0.2.0",
     "zod": ">=4.0.0"

@@ -1,5 +1,5 @@
 import { Autowired, Controller, Get, Query } from '@riktajs/core';
-import { GreetingService } from '../services/greeting.service.js';
+import { GreetingService } from '../services/greeting.service';
 
 @Controller()
 export class AppController {
