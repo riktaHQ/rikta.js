@@ -1,6 +1,6 @@
 {
   "name": "@riktajs/monorepo",
-  "version": "0.4.1",
+  "version": "0.10.3",
   "description": "A fast and modern TypeScript backend framework with zero-config autowiring, powered by Fastify",
   "type": "module",
   "private": true,
