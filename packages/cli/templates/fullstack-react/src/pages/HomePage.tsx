@@ -96,6 +96,24 @@ class PageController {
       </div>
 
       <div style={styles.card}>
+        <h2 style={styles.cardTitle}>🔗 Dynamic Routes</h2>
+        <p style={{ color: '#888', marginBottom: '1rem' }}>
+          Check out our dynamic route example with parameter handling:
+        </p>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <a href="/item/1" style={{ ...styles.button, textDecoration: 'none', display: 'inline-block' }}>
+            View Item #1
+          </a>
+          <a href="/item/2" style={{ ...styles.button, textDecoration: 'none', display: 'inline-block' }}>
+            View Item #2
+          </a>
+          <a href="/item/3" style={{ ...styles.button, textDecoration: 'none', display: 'inline-block' }}>
+            View Item #3
+          </a>
+        </div>
+      </div>
+
+      <div style={styles.card}>
         <h2 style={styles.cardTitle}>Server Data (from @Ssr context)</h2>
         <pre style={{ 
           background: 'rgba(0, 0, 0, 0.3)', 
