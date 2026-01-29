@@ -2,6 +2,10 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 describe('New Command', () => {
   let tempDir: string;
@@ -11,6 +15,16 @@ describe('New Command', () => {
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'rikta-new-test-'));
     originalCwd = process.cwd();
     process.chdir(tempDir);
+    
+    // Copy templates to the location where the source code expects them
+    // In tests, __dirname of new.ts is src/commands/, so it looks for ../templates
+    const sourceTemplatesDir = path.resolve(__dirname, '../templates');
+    const targetTemplatesDir = path.resolve(__dirname, '../src/templates');
+    
+    // Copy templates to where the code will find them during tests
+    if (await fs.pathExists(sourceTemplatesDir)) {
+      await fs.copy(sourceTemplatesDir, targetTemplatesDir);
+    }
   });
 
   afterEach(async () => {
@@ -18,6 +32,13 @@ describe('New Command', () => {
     if (await fs.pathExists(tempDir)) {
       await fs.remove(tempDir);
     }
+    
+    // Clean up copied templates
+    const targetTemplatesDir = path.resolve(__dirname, '../src/templates');
+    if (await fs.pathExists(targetTemplatesDir)) {
+      await fs.remove(targetTemplatesDir);
+    }
+    
     vi.restoreAllMocks();
   });
 

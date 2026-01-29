@@ -40,7 +40,8 @@ const sidebars: SidebarsConfig = {
         'techniques/middleware',
         'techniques/custom-decorators',
         'techniques/logging',
-        'techniques/queues'
+        'techniques/queues',
+        'techniques/ssr'
       ],
     },
     {

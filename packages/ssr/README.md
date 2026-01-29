@@ -1,0 +1,244 @@
+# @riktajs/ssr
+
+Server-Side Rendering (SSR) support for Rikta framework. Enable your Rikta application to render React, Vue, and other frontend frameworks on the server, making it a fullstack framework.
+
+## Features
+
+- 🚀 **Vite-powered** - Leverages Vite for blazing fast HMR and builds
+- ⚛️ **React & Vue support** - First-class support for React and Vue frameworks
+- 🔥 **Hot Module Replacement** - Full HMR support in development mode
+- 📦 **Zero Config** - Works out of the box with sensible defaults
+- 🛠️ **Fastify Integration** - Seamlessly integrates with Fastify server
+- 💎 **TypeScript Ready** - Full TypeScript support with proper types
+
+## Installation
+
+```bash
+# Using npm
+npm install @riktajs/ssr vite
+
+# Using pnpm
+pnpm add @riktajs/ssr vite
+
+# For React
+npm install react react-dom
+npm install -D @vitejs/plugin-react
+
+# For Vue
+npm install vue
+npm install -D @vitejs/plugin-vue
+```
+
+## Quick Start
+
+### 1. Create your Vite config
+
+```typescript
+// vite.config.ts
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  plugins: [react()],
+  build: {
+    rollupOptions: {
+      input: {
+        client: './src/entry-client.tsx',
+      },
+    },
+  },
+  ssr: {
+    noExternal: ['@riktajs/core'],
+  },
+});
+```
+
+### 2. Create entry files
+
+**Server Entry (`src/entry-server.tsx`):**
+
+```tsx
+import React from 'react';
+import { renderToString } from 'react-dom/server';
+import { App } from './App';
+
+export function render(url: string, context: Record<string, any> = {}) {
+  const html = renderToString(<App url={url} context={context} />);
+  return html;
+}
+```
+
+**Client Entry (`src/entry-client.tsx`):**
+
+```tsx
+import React from 'react';
+import { hydrateRoot } from 'react-dom/client';
+import { App } from './App';
+
+hydrateRoot(document.getElementById('app')!, <App />);
+```
+
+### 3. Register the SSR plugin
+
+```typescript
+import { Rikta } from '@riktajs/core';
+import { ssrPlugin } from '@riktajs/ssr';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+async function bootstrap() {
+  const app = await Rikta.create({ port: 3000 });
+
+  // Register SSR plugin
+  await app.server.register(ssrPlugin, {
+    root: resolve(__dirname, '..'),
+    entryServer: './src/entry-server.tsx',
+    template: './index.html',
+  });
+
+  // Serve all routes with SSR
+  app.server.get('*', async (request, reply) => {
+    const html = await app.server.ssr.render(request.url, {
+      user: request.user,
+    });
+    return reply.type('text/html').send(html);
+  });
+
+  await app.listen();
+  console.log('🚀 Server running at http://localhost:3000');
+}
+
+bootstrap();
+```
+
+## Configuration
+
+### SSR Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `root` | `string` | `process.cwd()` | Project root directory |
+| `entryServer` | `string` | `'./src/entry-server'` | Path to server entry file |
+| `template` | `string` | `'./index.html'` | Path to HTML template |
+| `dev` | `boolean` | `auto` | Enable development mode (auto-detected from NODE_ENV) |
+| `buildDir` | `string` | `'dist'` | Build output directory |
+| `ssrManifest` | `string` | `'ssr-manifest.json'` | SSR manifest filename |
+
+### HTML Template
+
+Your `index.html` should include placeholders for SSR content:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Rikta App</title>
+  <!--head-tags-->
+</head>
+<body>
+  <div id="app"><!--ssr-outlet--></div>
+  <script type="module" src="/src/entry-client.tsx"></script>
+</body>
+</html>
+```
+
+## API Reference
+
+### `ssrPlugin`
+
+Fastify plugin that enables SSR capabilities.
+
+```typescript
+import { ssrPlugin, SsrOptions } from '@riktajs/ssr';
+
+await app.server.register(ssrPlugin, options);
+```
+
+### `SsrService`
+
+Injectable service for programmatic SSR control.
+
+```typescript
+import { Injectable, Autowired } from '@riktajs/core';
+import { SsrService } from '@riktajs/ssr';
+
+@Injectable()
+class MyController {
+  @Autowired()
+  private ssr!: SsrService;
+
+  async render(url: string) {
+    return this.ssr.render(url, { data: 'context' });
+  }
+}
+```
+
+### Methods
+
+#### `render(url: string, context?: Record<string, any>): Promise<string>`
+
+Renders the application for the given URL and returns the full HTML.
+
+#### `transformIndexHtml(url: string, html: string): Promise<string>`
+
+Transforms the HTML template with Vite's transformations (in dev mode).
+
+## Production Build
+
+### 1. Build for production
+
+```bash
+# Build client
+vite build --outDir dist/client
+
+# Build server
+vite build --outDir dist/server --ssr src/entry-server.tsx
+```
+
+### 2. Start production server
+
+```typescript
+const app = await Rikta.create({ port: 3000 });
+
+await app.server.register(ssrPlugin, {
+  root: resolve(__dirname, '..'),
+  entryServer: './dist/server/entry-server.js',
+  template: './dist/client/index.html',
+  dev: false,
+  buildDir: 'dist/client',
+});
+```
+
+## Vue Support
+
+For Vue applications, the setup is similar:
+
+```typescript
+// vite.config.ts
+import { defineConfig } from 'vite';
+import vue from '@vitejs/plugin-vue';
+
+export default defineConfig({
+  plugins: [vue()],
+});
+```
+
+```typescript
+// src/entry-server.ts
+import { createApp } from './main';
+import { renderToString } from 'vue/server-renderer';
+
+export async function render(url: string, context: Record<string, any> = {}) {
+  const { app } = createApp();
+  const html = await renderToString(app);
+  return html;
+}
+```
+
+## License
+
+MIT

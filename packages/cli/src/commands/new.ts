@@ -20,6 +20,11 @@ const TEMPLATES = [
     description: 'Standard Rikta REST API with controllers and services',
   },
   {
+    name: 'fullstack-react',
+    value: 'fullstack-react',
+    description: 'Fullstack application with React SSR and Vite',
+  },
+  {
     name: 'mcp-server',
     value: 'mcp-server',
     description: 'Minimal MCP server with tool, resource, and prompt examples',
@@ -45,6 +50,15 @@ function getGettingStartedMessages(template: string): string[] {
       '1. Your MCP server exposes tools, resources, and prompts for AI assistants',
       '2. The MCP endpoint will be available at http://localhost:3000/mcp',
       '3. Connect Claude Desktop or other MCP clients to interact with your server',
+    ];
+  }
+
+  if (template === 'fullstack-react') {
+    return [
+      '1. This is a fullstack application with React SSR powered by Vite',
+      '2. Edit src/App.tsx to modify the React UI, changes will hot reload',
+      '3. Add API routes in src/server.ts using @Controller decorators',
+      '4. Build for production with: npm run build && npm start',
     ];
   }
 
