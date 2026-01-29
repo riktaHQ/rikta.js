@@ -30,7 +30,7 @@
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
-    "@riktajs/cli": "^0.11.1",
+    "@riktajs/cli": "^0.11.2",
     "@types/node": "^22.10.2",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
