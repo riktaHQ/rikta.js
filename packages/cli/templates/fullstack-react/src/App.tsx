@@ -1,6 +1,7 @@
 import React from 'react';
 import { Layout } from './components/Layout.js';
 import { HomePage } from './pages/HomePage.js';
+import './App.css';
 
 interface AppProps {
   url?: string;

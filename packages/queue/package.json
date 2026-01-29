@@ -1,6 +1,6 @@
 {
   "name": "@riktajs/queue",
-  "version": "0.10.3",
+  "version": "0.11.0",
   "description": "BullMQ-based job queue integration for Rikta Framework with lifecycle management and event-driven processing",
   "type": "module",
   "main": "dist/index.cjs",
@@ -50,7 +50,7 @@
     "ioredis": "^5.4.2"
   },
   "peerDependencies": {
-    "@riktajs/core": ">=0.10.3",
+    "@riktajs/core": ">=0.11.0",
     "bullmq": ">=5.0.0",
     "reflect-metadata": ">=0.2.0"
   },
