@@ -38,10 +38,8 @@ export class PageController {
       description: 'Build fullstack TypeScript apps with SSR support',
     },
     head: [
-      Head.meta('author', 'Rikta Team'),
       Head.link('icon', '/favicon.ico'),
-    ],
-    cache: { maxAge: 60 },
+    ]
   })
   home() {
     return {
