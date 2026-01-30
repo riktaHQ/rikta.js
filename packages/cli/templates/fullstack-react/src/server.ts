@@ -22,6 +22,7 @@ async function bootstrap() {
   });
 
   // Register SSR plugin
+  // Pass container to enable @UseGuards, @UseMiddleware, @UseInterceptors on SSR routes
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (app.server.register as any)(ssrPlugin, {
     root: isDev ? resolve(__dirname, '..') : __dirname,
@@ -29,6 +30,7 @@ async function bootstrap() {
     template: isDev ? './index.html' : './client/index.html',
     buildDir: isDev ? 'dist' : '.',
     dev: isDev,
+    container: app.container,
   });
 
   // Register SSR controller

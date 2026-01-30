@@ -12,6 +12,108 @@ import type { SsrRouteMetadata, SsrRouteOptions } from './decorators/ssr.decorat
 // Use Symbol.for() for cross-package compatibility with @riktajs/core
 const ROUTES_METADATA = Symbol.for('rikta:routes:metadata');
 const PARAM_METADATA = Symbol.for('rikta:param:metadata');
+const GUARDS_METADATA = Symbol.for('rikta:guards:metadata');
+const MIDDLEWARE_METADATA = Symbol.for('rikta:middleware:metadata');
+const INTERCEPTORS_METADATA = Symbol.for('rikta:interceptors:metadata');
+
+/**
+ * Container interface for dependency injection
+ */
+interface Container {
+  resolve: <T>(token: Constructor<T>) => T;
+}
+
+/**
+ * ExecutionContext interface for guards and interceptors
+ */
+interface ExecutionContext {
+  switchToHttp(): HttpArgumentsHost;
+  getRequest<T = FastifyRequest>(): T;
+  getReply<T = FastifyReply>(): T;
+  getClass(): Constructor;
+  getHandler(): string | symbol;
+  getMetadata<T = unknown>(key: string | symbol): T | undefined;
+}
+
+interface HttpArgumentsHost {
+  getRequest<T = FastifyRequest>(): T;
+  getResponse<T = FastifyReply>(): T;
+}
+
+/**
+ * ExecutionContext implementation for SSR routes
+ */
+class SsrExecutionContext implements ExecutionContext {
+  private readonly httpHost: HttpArgumentsHost;
+
+  constructor(
+    private readonly request: FastifyRequest,
+    private readonly reply: FastifyReply,
+    private readonly controllerClass: Constructor,
+    private readonly handlerName: string | symbol,
+  ) {
+    this.httpHost = {
+      getRequest: <T = FastifyRequest>() => this.request as T,
+      getResponse: <T = FastifyReply>() => this.reply as T,
+    };
+  }
+
+  switchToHttp(): HttpArgumentsHost {
+    return this.httpHost;
+  }
+
+  getRequest<T = FastifyRequest>(): T {
+    return this.request as T;
+  }
+
+  getReply<T = FastifyReply>(): T {
+    return this.reply as T;
+  }
+
+  getClass(): Constructor {
+    return this.controllerClass;
+  }
+
+  getHandler(): string | symbol {
+    return this.handlerName;
+  }
+
+  getMetadata<T = unknown>(key: string | symbol): T | undefined {
+    return Reflect.getMetadata(key, this.controllerClass, this.handlerName as string) as T | undefined;
+  }
+}
+
+/**
+ * CanActivate interface for guards
+ */
+interface CanActivate {
+  canActivate(context: ExecutionContext): boolean | Promise<boolean>;
+}
+
+/**
+ * RiktaMiddleware interface
+ */
+interface RiktaMiddleware {
+  use(req: FastifyRequest, res: FastifyReply, next: () => void | Promise<void>): void | Promise<void>;
+}
+
+/**
+ * CallHandler interface for interceptors
+ */
+interface CallHandler {
+  handle(): Promise<unknown>;
+}
+
+/**
+ * Interceptor interface
+ */
+interface Interceptor {
+  intercept(context: ExecutionContext, next: CallHandler): Promise<unknown>;
+}
+
+type GuardClass = Constructor<CanActivate>;
+type MiddlewareClass = Constructor<RiktaMiddleware>;
+type InterceptorClass = Constructor<Interceptor>;
 
 /**
  * Route definition from @riktajs/core
@@ -88,20 +190,30 @@ function mergeRouteOptions(
  * SSR Router
  *
  * Registers SSR controllers with Fastify and handles SSR rendering.
- * Integrates with @riktajs/core's decorator system.
+ * Integrates with @riktajs/core's decorator system including guards,
+ * middleware, and interceptors.
  *
  * @example
  * ```typescript
- * const router = new SsrRouter(fastify, ssrService, globalOptions);
+ * const router = new SsrRouter(fastify, ssrService, globalOptions, container);
  * router.registerController(PageController);
  * ```
  */
 export class SsrRouter {
+  /** Cache for guard instances (singleton per guard class) */
+  private readonly guardCache = new Map<GuardClass, CanActivate>();
+  
+  /** Cache for middleware instances (singleton per middleware class) */
+  private readonly middlewareCache = new Map<MiddlewareClass, RiktaMiddleware>();
+
+  /** Cache for interceptor instances (singleton per interceptor class) */
+  private readonly interceptorCache = new Map<InterceptorClass, Interceptor>();
+
   constructor(
     private readonly server: FastifyInstance,
     private readonly ssrService: SsrService,
     private readonly globalOptions: SsrOptions,
-    private readonly container?: { resolve: <T>(token: Constructor<T>) => T }
+    private readonly container?: Container
   ) {}
 
   /**
@@ -179,6 +291,27 @@ export class SsrRouter {
     const paramsMeta: ParamMetadata[] =
       Reflect.getMetadata(PARAM_METADATA, controllerClass, route.handlerName) ?? [];
 
+    // Get guards for this route (controller-level + method-level)
+    const guards = this.getGuardsMetadata(controllerClass, route.handlerName);
+    
+    // Get middleware for this route (controller-level + method-level)
+    const middleware = this.getMiddlewareMetadata(controllerClass, route.handlerName);
+    
+    // Get interceptors for this route (controller-level + method-level)
+    const interceptors = this.getInterceptorsMetadata(controllerClass, route.handlerName);
+
+    // Pre-resolve guard instances
+    const guardInstances = this.resolveGuardInstances(guards);
+    const hasGuards = guardInstances.length > 0;
+
+    // Pre-resolve middleware instances
+    const middlewareInstances = this.resolveMiddlewareInstances(middleware);
+    const hasMiddleware = middlewareInstances.length > 0;
+
+    // Pre-resolve interceptor instances
+    const interceptorInstances = this.resolveInterceptorInstances(interceptors);
+    const hasInterceptors = interceptorInstances.length > 0;
+
     // Merge SSR options: global -> controller -> route
     const mergedSsrOptions = {
       ...this.globalOptions,
@@ -197,11 +330,44 @@ export class SsrRouter {
       reply: FastifyReply
     ): Promise<unknown> => {
       try {
-        // Resolve parameters
-        const args = this.resolveParams(paramsMeta, request, reply);
+        // Create execution context for guards and interceptors
+        const executionContext = new SsrExecutionContext(
+          request,
+          reply,
+          controllerClass,
+          route.handlerName
+        );
 
-        // Call the controller method to get context data
-        const contextData = await handler.apply(controllerInstance, args);
+        // 1. Execute guards (if any)
+        if (hasGuards) {
+          await this.executeGuards(guardInstances, executionContext);
+        }
+
+        // 2. Execute middleware (if any)
+        if (hasMiddleware) {
+          await this.executeMiddlewareChain(middlewareInstances, request, reply);
+        }
+
+        // 3. Prepare the core handler function
+        const coreHandler = async (): Promise<unknown> => {
+          // Resolve parameters
+          const args = this.resolveParams(paramsMeta, request, reply);
+
+          // Call the controller method to get context data
+          return await handler.apply(controllerInstance, args);
+        };
+
+        // 4. Execute with interceptors or directly
+        let contextData: unknown;
+        if (hasInterceptors) {
+          contextData = await this.executeInterceptorChain(
+            interceptorInstances,
+            executionContext,
+            coreHandler
+          );
+        } else {
+          contextData = await coreHandler();
+        }
 
         // Check if client is requesting just the data (for client-side navigation)
         const wantsData = request.headers['x-rikta-data'] === '1';
@@ -228,9 +394,9 @@ export class SsrRouter {
         // Decorator metadata takes precedence over contextData
         const context: SsrExtendedContext = {
           url: request.url,
-          ...(contextData || {}),
+          ...(contextData as Record<string, unknown> || {}),
           // Include data for hydration
-          __SSR_DATA__: contextData,
+          __SSR_DATA__: contextData as Record<string, unknown> | undefined,
         };
 
         // Apply merged route options (controller defaults + @Ssr decorator)
@@ -278,16 +444,71 @@ export class SsrRouter {
 
         return reply.type('text/html').send(html);
       } catch (error) {
-        // Log error
-        this.server.log.error(error);
+        // Check if this is an HTTP exception (like ForbiddenException)
+        const httpError = error as { statusCode?: number; message?: string; getStatus?: () => number; getResponse?: () => unknown };
+        
+        // Get status code from various exception formats
+        const statusCode = httpError.statusCode 
+          ?? (typeof httpError.getStatus === 'function' ? httpError.getStatus() : undefined)
+          ?? 500;
+        
+        // Log error (don't log 4xx client errors as server errors)
+        if (statusCode >= 500) {
+          this.server.log.error(error);
+        }
 
-        // Return error page
-        return reply.status(500).type('text/html').send(`
+        // Get error message
+        const errorMessage = typeof httpError.getResponse === 'function'
+          ? (typeof httpError.getResponse() === 'string' ? httpError.getResponse() : (httpError.getResponse() as { message?: string })?.message)
+          : httpError.message ?? 'An error occurred';
+
+        // Return appropriate error page based on status code
+        if (statusCode === 403) {
+          return reply.status(403).type('text/html').send(`
+            <!DOCTYPE html>
+            <html>
+              <head><title>Access Denied</title></head>
+              <body>
+                <h1>403 - Access Denied</h1>
+                <p>${errorMessage}</p>
+              </body>
+            </html>
+          `);
+        }
+
+        if (statusCode === 401) {
+          return reply.status(401).type('text/html').send(`
+            <!DOCTYPE html>
+            <html>
+              <head><title>Unauthorized</title></head>
+              <body>
+                <h1>401 - Unauthorized</h1>
+                <p>${errorMessage}</p>
+              </body>
+            </html>
+          `);
+        }
+
+        if (statusCode === 404) {
+          return reply.status(404).type('text/html').send(`
+            <!DOCTYPE html>
+            <html>
+              <head><title>Not Found</title></head>
+              <body>
+                <h1>404 - Not Found</h1>
+                <p>${errorMessage}</p>
+              </body>
+            </html>
+          `);
+        }
+
+        // Default server error page
+        return reply.status(statusCode).type('text/html').send(`
           <!DOCTYPE html>
           <html>
             <head><title>Server Error</title></head>
             <body>
-              <h1>500 - Server Error</h1>
+              <h1>${statusCode} - Server Error</h1>
               <p>An error occurred while rendering this page.</p>
               ${mergedSsrOptions.dev ? `<pre>${error instanceof Error ? error.stack : String(error)}</pre>` : ''}
             </body>
@@ -394,5 +615,281 @@ export class SsrRouter {
     }
 
     return args;
+  }
+
+  /**
+   * Get guards metadata from a controller class and/or method
+   */
+  private getGuardsMetadata(
+    target: Constructor, 
+    propertyKey?: string | symbol
+  ): GuardClass[] {
+    // Get class-level guards
+    const classGuards: GuardClass[] = 
+      Reflect.getMetadata(GUARDS_METADATA, target) ?? [];
+    
+    if (!propertyKey) {
+      return classGuards;
+    }
+    
+    // Get method-level guards
+    const methodGuards: GuardClass[] = 
+      Reflect.getMetadata(GUARDS_METADATA, target, propertyKey) ?? [];
+    
+    // Combine: class guards run first, then method guards
+    return [...classGuards, ...methodGuards];
+  }
+
+  /**
+   * Get middleware metadata from a controller class and/or method
+   */
+  private getMiddlewareMetadata(
+    target: Constructor, 
+    propertyKey?: string | symbol
+  ): MiddlewareClass[] {
+    // Get class-level middleware
+    const classMiddleware: MiddlewareClass[] = 
+      Reflect.getMetadata(MIDDLEWARE_METADATA, target) ?? [];
+    
+    if (!propertyKey) {
+      return classMiddleware;
+    }
+    
+    // Get method-level middleware
+    const methodMiddleware: MiddlewareClass[] = 
+      Reflect.getMetadata(MIDDLEWARE_METADATA, target, propertyKey) ?? [];
+    
+    // Combine: class middleware runs first, then method middleware
+    return [...classMiddleware, ...methodMiddleware];
+  }
+
+  /**
+   * Get interceptors metadata from a controller class and/or method
+   */
+  private getInterceptorsMetadata(
+    target: Constructor, 
+    propertyKey?: string | symbol
+  ): InterceptorClass[] {
+    // Get class-level interceptors
+    const classInterceptors: InterceptorClass[] = 
+      Reflect.getMetadata(INTERCEPTORS_METADATA, target) ?? [];
+    
+    if (!propertyKey) {
+      return classInterceptors;
+    }
+    
+    // Get method-level interceptors
+    const methodInterceptors: InterceptorClass[] = 
+      Reflect.getMetadata(INTERCEPTORS_METADATA, target, propertyKey) ?? [];
+    
+    // Combine: class interceptors run first, then method interceptors
+    return [...classInterceptors, ...methodInterceptors];
+  }
+
+  /**
+   * Pre-resolve guard instances at route registration
+   */
+  private resolveGuardInstances(guards: GuardClass[]): CanActivate[] {
+    return guards.map(guard => {
+      // If it's already an instance (has canActivate method), return it directly
+      if (typeof guard === 'object' && guard !== null && typeof (guard as any).canActivate === 'function') {
+        return guard as unknown as CanActivate;
+      }
+      
+      const GuardClass = guard as new (...args: any[]) => CanActivate;
+      
+      // Check cache first
+      let instance = this.guardCache.get(GuardClass);
+      if (instance) return instance;
+
+      // Resolve from container or create directly
+      if (this.container) {
+        try {
+          instance = this.container.resolve(GuardClass) as CanActivate;
+        } catch (error) {
+          throw new Error(
+            `Failed to resolve guard ${GuardClass.name}. ` +
+            `Make sure it is decorated with @Injectable(). ` +
+            `Original error: ${error instanceof Error ? error.message : String(error)}`
+          );
+        }
+      } else {
+        // Fallback: create instance directly
+        instance = new GuardClass() as CanActivate;
+      }
+
+      // Verify interface
+      if (typeof instance.canActivate !== 'function') {
+        throw new Error(
+          `${GuardClass.name} does not implement CanActivate interface. ` +
+          `The guard must have a canActivate(context: ExecutionContext) method.`
+        );
+      }
+
+      // Cache for future use
+      this.guardCache.set(GuardClass, instance);
+      return instance;
+    });
+  }
+
+  /**
+   * Pre-resolve middleware instances at route registration
+   */
+  private resolveMiddlewareInstances(middleware: MiddlewareClass[]): RiktaMiddleware[] {
+    return middleware.map(mw => {
+      // If it's already an instance (has use method), return it directly
+      if (typeof mw === 'object' && mw !== null && typeof (mw as any).use === 'function') {
+        return mw as unknown as RiktaMiddleware;
+      }
+      
+      const MiddlewareClass = mw as new (...args: any[]) => RiktaMiddleware;
+      
+      // Check cache first
+      let instance = this.middlewareCache.get(MiddlewareClass);
+      if (instance) return instance;
+
+      // Resolve from container or create directly
+      if (this.container) {
+        try {
+          instance = this.container.resolve(MiddlewareClass) as RiktaMiddleware;
+        } catch (error) {
+          throw new Error(
+            `Failed to resolve middleware ${MiddlewareClass.name}. ` +
+            `Make sure it is decorated with @Injectable(). ` +
+            `Original error: ${error instanceof Error ? error.message : String(error)}`
+          );
+        }
+      } else {
+        // Fallback: create instance directly
+        instance = new MiddlewareClass() as RiktaMiddleware;
+      }
+
+      // Verify interface
+      if (typeof instance.use !== 'function') {
+        throw new Error(
+          `${MiddlewareClass.name} does not implement RiktaMiddleware interface. ` +
+          `The middleware must have a use(req, res, next) method.`
+        );
+      }
+
+      // Cache for future use
+      this.middlewareCache.set(MiddlewareClass, instance);
+      return instance;
+    });
+  }
+
+  /**
+   * Pre-resolve interceptor instances at route registration
+   */
+  private resolveInterceptorInstances(interceptors: InterceptorClass[]): Interceptor[] {
+    return interceptors.map(int => {
+      // If it's already an instance (has intercept method), return it directly
+      if (typeof int === 'object' && int !== null && typeof (int as any).intercept === 'function') {
+        return int as unknown as Interceptor;
+      }
+      
+      const InterceptorClass = int as new (...args: any[]) => Interceptor;
+      
+      // Check cache first
+      let instance = this.interceptorCache.get(InterceptorClass);
+      if (instance) return instance;
+
+      // Resolve from container or create directly
+      if (this.container) {
+        try {
+          instance = this.container.resolve(InterceptorClass) as Interceptor;
+        } catch (error) {
+          throw new Error(
+            `Failed to resolve interceptor ${InterceptorClass.name}. ` +
+            `Make sure it is decorated with @Injectable(). ` +
+            `Original error: ${error instanceof Error ? error.message : String(error)}`
+          );
+        }
+      } else {
+        // Fallback: create instance directly
+        instance = new InterceptorClass() as Interceptor;
+      }
+
+      // Verify interface
+      if (typeof instance.intercept !== 'function') {
+        throw new Error(
+          `${InterceptorClass.name} does not implement Interceptor interface. ` +
+          `The interceptor must have an intercept(context, next) method.`
+        );
+      }
+
+      // Cache for future use
+      this.interceptorCache.set(InterceptorClass, instance);
+      return instance;
+    });
+  }
+
+  /**
+   * Execute guards in order
+   * Throws ForbiddenException if any guard returns false
+   */
+  private async executeGuards(
+    guardInstances: CanActivate[],
+    context: ExecutionContext
+  ): Promise<void> {
+    for (let i = 0; i < guardInstances.length; i++) {
+      const result = await guardInstances[i].canActivate(context);
+      if (result !== true) {
+        // Create a simple error that mimics ForbiddenException
+        const error = new Error('Access denied by guard') as Error & { statusCode: number };
+        error.statusCode = 403;
+        throw error;
+      }
+    }
+  }
+
+  /**
+   * Execute middleware chain in order
+   * Each middleware must call next() to continue
+   */
+  private async executeMiddlewareChain(
+    middlewareInstances: RiktaMiddleware[],
+    request: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<void> {
+    let index = 0;
+
+    const next = async (): Promise<void> => {
+      if (index < middlewareInstances.length) {
+        const middleware = middlewareInstances[index++];
+        await middleware.use(request, reply, next);
+      }
+    };
+
+    await next();
+  }
+
+  /**
+   * Execute interceptor chain
+   * Each interceptor wraps around the next, creating an onion-like execution
+   */
+  private async executeInterceptorChain(
+    interceptorInstances: Interceptor[],
+    context: ExecutionContext,
+    coreHandler: () => Promise<unknown>
+  ): Promise<unknown> {
+    // Build the chain from the inside out
+    // Last interceptor wraps the core handler
+    // First interceptor is the outermost wrapper
+    let handler = coreHandler;
+
+    for (let i = interceptorInstances.length - 1; i >= 0; i--) {
+      const interceptor = interceptorInstances[i];
+      const nextHandler = handler;
+      
+      handler = () => {
+        const callHandler: CallHandler = {
+          handle: () => nextHandler()
+        };
+        return interceptor.intercept(context, callHandler);
+      };
+    }
+
+    return handler();
   }
 }

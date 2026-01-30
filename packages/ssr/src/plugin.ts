@@ -100,7 +100,8 @@ const ssrPluginImpl: FastifyPluginAsync<SsrOptions> = async (
   }
 
   // Create SSR router for decorator-based controllers
-  const ssrRouter = new SsrRouter(fastify, ssrService, options);
+  // Pass container for DI support (guards, middleware, interceptors)
+  const ssrRouter = new SsrRouter(fastify, ssrService, options, options.container);
   fastify.decorate('ssrRouter', ssrRouter);
 
   // Convenience method to register SSR controllers

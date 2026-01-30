@@ -1,6 +1,6 @@
 {
   "name": "@riktajs/ssr",
-  "version": "0.11.5",
+  "version": "0.11.6",
   "description": "Server-Side Rendering (SSR) support for Rikta framework with React, Vue, and other frontend frameworks",
   "type": "module",
   "main": "dist/index.cjs",

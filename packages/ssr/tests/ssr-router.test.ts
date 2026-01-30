@@ -414,4 +414,218 @@ describe('SsrRouter', () => {
         url: '/test?q=search',
       });
     });
-  });});
+  });
+
+  describe('guards support', () => {
+    // Helper decorator for UseGuards - must use the same Symbol as @riktajs/core
+    const GUARDS_METADATA = Symbol.for('rikta:guards:metadata');
+    function UseGuards(...guards: any[]): MethodDecorator & ClassDecorator {
+      return (target: any, propertyKey?: string | symbol) => {
+        if (propertyKey) {
+          const existing = Reflect.getMetadata(GUARDS_METADATA, target.constructor, propertyKey) ?? [];
+          Reflect.defineMetadata(GUARDS_METADATA, [...existing, ...guards], target.constructor, propertyKey);
+        } else {
+          const existing = Reflect.getMetadata(GUARDS_METADATA, target) ?? [];
+          Reflect.defineMetadata(GUARDS_METADATA, [...existing, ...guards], target);
+        }
+      };
+    }
+
+    it('should allow access when guard returns true', async () => {
+      const mockGuard = {
+        canActivate: vi.fn().mockReturnValue(true),
+      };
+
+      @SsrController()
+      class PageController {
+        @Get('/protected')
+        @UseGuards(mockGuard)
+        protectedPage() {
+          return { page: 'protected' };
+        }
+      }
+
+      router.registerController(PageController, true);
+
+      const handler = mockFastify.get.mock.calls[0][1];
+      const mockRequest = { url: '/protected', headers: {} };
+      const mockReply = {
+        type: vi.fn().mockReturnThis(),
+        send: vi.fn().mockReturnThis(),
+        header: vi.fn().mockReturnThis(),
+        status: vi.fn().mockReturnThis(),
+      };
+
+      await handler(mockRequest, mockReply);
+
+      expect(mockGuard.canActivate).toHaveBeenCalled();
+      expect(mockSsrService.render).toHaveBeenCalled();
+    });
+
+    it('should deny access when guard returns false', async () => {
+      const mockGuard = {
+        canActivate: vi.fn().mockReturnValue(false),
+      };
+
+      @SsrController()
+      class PageController {
+        @Get('/protected')
+        @UseGuards(mockGuard)
+        protectedPage() {
+          return { page: 'protected' };
+        }
+      }
+
+      router.registerController(PageController, true);
+
+      const handler = mockFastify.get.mock.calls[0][1];
+      const mockRequest = { url: '/protected', headers: {} };
+      const mockReply = {
+        type: vi.fn().mockReturnThis(),
+        send: vi.fn().mockReturnThis(),
+        header: vi.fn().mockReturnThis(),
+        status: vi.fn().mockReturnThis(),
+      };
+
+      await handler(mockRequest, mockReply);
+
+      expect(mockGuard.canActivate).toHaveBeenCalled();
+      expect(mockSsrService.render).not.toHaveBeenCalled();
+      expect(mockReply.status).toHaveBeenCalledWith(403);
+    });
+
+    it('should work with async guards', async () => {
+      const mockGuard = {
+        canActivate: vi.fn().mockResolvedValue(true),
+      };
+
+      @SsrController()
+      class PageController {
+        @Get('/async-protected')
+        @UseGuards(mockGuard)
+        asyncProtectedPage() {
+          return { page: 'async-protected' };
+        }
+      }
+
+      router.registerController(PageController, true);
+
+      const handler = mockFastify.get.mock.calls[0][1];
+      const mockRequest = { url: '/async-protected', headers: {} };
+      const mockReply = {
+        type: vi.fn().mockReturnThis(),
+        send: vi.fn().mockReturnThis(),
+        header: vi.fn().mockReturnThis(),
+        status: vi.fn().mockReturnThis(),
+      };
+
+      await handler(mockRequest, mockReply);
+
+      expect(mockGuard.canActivate).toHaveBeenCalled();
+      expect(mockSsrService.render).toHaveBeenCalled();
+    });
+
+    it('should run multiple guards in sequence', async () => {
+      const guard1 = { canActivate: vi.fn().mockReturnValue(true) };
+      const guard2 = { canActivate: vi.fn().mockReturnValue(true) };
+
+      @SsrController()
+      class PageController {
+        @Get('/multi-guard')
+        @UseGuards(guard1, guard2)
+        multiGuardPage() {
+          return { page: 'multi-guard' };
+        }
+      }
+
+      router.registerController(PageController, true);
+
+      const handler = mockFastify.get.mock.calls[0][1];
+      const mockRequest = { url: '/multi-guard', headers: {} };
+      const mockReply = {
+        type: vi.fn().mockReturnThis(),
+        send: vi.fn().mockReturnThis(),
+        header: vi.fn().mockReturnThis(),
+        status: vi.fn().mockReturnThis(),
+      };
+
+      await handler(mockRequest, mockReply);
+
+      expect(guard1.canActivate).toHaveBeenCalled();
+      expect(guard2.canActivate).toHaveBeenCalled();
+      expect(mockSsrService.render).toHaveBeenCalled();
+    });
+
+    it('should stop at first failing guard', async () => {
+      const guard1 = { canActivate: vi.fn().mockReturnValue(false) };
+      const guard2 = { canActivate: vi.fn().mockReturnValue(true) };
+
+      @SsrController()
+      class PageController {
+        @Get('/fail-first')
+        @UseGuards(guard1, guard2)
+        failFirstPage() {
+          return { page: 'fail-first' };
+        }
+      }
+
+      router.registerController(PageController, true);
+
+      const handler = mockFastify.get.mock.calls[0][1];
+      const mockRequest = { url: '/fail-first', headers: {} };
+      const mockReply = {
+        type: vi.fn().mockReturnThis(),
+        send: vi.fn().mockReturnThis(),
+        header: vi.fn().mockReturnThis(),
+        status: vi.fn().mockReturnThis(),
+      };
+
+      await handler(mockRequest, mockReply);
+
+      expect(guard1.canActivate).toHaveBeenCalled();
+      expect(guard2.canActivate).not.toHaveBeenCalled();
+      expect(mockReply.status).toHaveBeenCalledWith(403);
+    });
+
+    it('should resolve guard classes from container', async () => {
+      class MyGuard {
+        canActivate() {
+          return true;
+        }
+      }
+
+      mockContainer.resolve = vi.fn((cls: any) => {
+        if (cls === MyGuard) {
+          return new MyGuard();
+        }
+        return new cls();
+      });
+
+      @SsrController()
+      class PageController {
+        @Get('/class-guard')
+        @UseGuards(MyGuard)
+        classGuardPage() {
+          return { page: 'class-guard' };
+        }
+      }
+
+      router.registerController(PageController, true);
+
+      const handler = mockFastify.get.mock.calls[0][1];
+      const mockRequest = { url: '/class-guard', headers: {} };
+      const mockReply = {
+        type: vi.fn().mockReturnThis(),
+        send: vi.fn().mockReturnThis(),
+        header: vi.fn().mockReturnThis(),
+        status: vi.fn().mockReturnThis(),
+      };
+
+      await handler(mockRequest, mockReply);
+
+      // Guard should be resolved from container
+      expect(mockContainer.resolve).toHaveBeenCalledWith(MyGuard);
+      expect(mockSsrService.render).toHaveBeenCalled();
+    });
+  });
+});

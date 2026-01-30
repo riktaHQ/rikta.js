@@ -229,6 +229,127 @@ import { ssrPlugin, SsrOptions } from '@riktajs/ssr';
 await app.server.register(ssrPlugin, options);
 ```
 
+### SSR Plugin Options
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `root` | `string` | Project root directory |
+| `entryServer` | `string` | Path to server entry file |
+| `template` | `string` | Path to HTML template |
+| `dev` | `boolean` | Enable development mode |
+| `buildDir` | `string` | Build output directory |
+| `container` | `Container` | DI container for guards, middleware, interceptors support |
+
+## Guards, Middleware, and Interceptors
+
+SSR routes fully support Rikta's decorator-based guards, middleware, and interceptors. To enable this functionality, pass the `container` option when registering the plugin:
+
+```typescript
+const app = await Rikta.create({
+  port: 3000,
+  controllers: [ApiController],
+});
+
+await app.server.register(ssrPlugin, {
+  root: resolve(__dirname, '..'),
+  entryServer: './src/entry-server.tsx',
+  template: './index.html',
+  // Enable guards, middleware, interceptors on SSR routes
+  container: app.container,
+});
+
+app.server.registerSsrController(PageController);
+```
+
+### Using Guards on SSR Routes
+
+```typescript
+import { Get, UseGuards, Req } from '@riktajs/core';
+import type { FastifyRequest } from 'fastify';
+import { SsrController, Ssr } from '@riktajs/ssr';
+import { AuthGuard } from './guards/auth.guard.js';
+
+@SsrController()
+export class PageController {
+  // Public page - no guard
+  @Get('/')
+  @Ssr({ title: 'Home' })
+  home() {
+    return { page: 'home' };
+  }
+
+  // Protected page - requires authentication
+  @Get('/dashboard')
+  @UseGuards(AuthGuard)
+  @Ssr({ title: 'Dashboard', robots: 'noindex' })
+  dashboard(@Req() request: FastifyRequest) {
+    const user = (request as any).user;
+    return {
+      page: 'dashboard',
+      user: { id: user.id, name: user.name },
+    };
+  }
+}
+```
+
+### Example Guard Implementation
+
+```typescript
+import type { Guard, ExecutionContext } from '@riktajs/core';
+
+export class AuthGuard implements Guard {
+  canActivate(context: ExecutionContext): boolean | Promise<boolean> {
+    const request = context.switchToHttp().getRequest();
+    
+    const authToken = request.headers['x-auth-token'];
+    
+    if (authToken) {
+      // Validate token and attach user to request
+      request.user = { id: 'user-123', name: 'John Doe' };
+      return true;
+    }
+    
+    return false; // Returns 403 Forbidden
+  }
+}
+```
+
+### Using Middleware on SSR Routes
+
+```typescript
+import { Get, UseMiddleware } from '@riktajs/core';
+import { SsrController, Ssr } from '@riktajs/ssr';
+import { LoggingMiddleware } from './middleware/logging.middleware.js';
+
+@SsrController()
+export class PageController {
+  @Get('/tracked')
+  @UseMiddleware(LoggingMiddleware)
+  @Ssr({ title: 'Tracked Page' })
+  trackedPage() {
+    return { page: 'tracked' };
+  }
+}
+```
+
+### Using Interceptors on SSR Routes
+
+```typescript
+import { Get, UseInterceptors } from '@riktajs/core';
+import { SsrController, Ssr } from '@riktajs/ssr';
+import { CacheInterceptor } from './interceptors/cache.interceptor.js';
+
+@SsrController()
+export class PageController {
+  @Get('/cached')
+  @UseInterceptors(CacheInterceptor)
+  @Ssr({ title: 'Cached Page' })
+  cachedPage() {
+    return { page: 'cached', timestamp: Date.now() };
+  }
+}
+```
+
 ### `SsrService`
 
 Injectable service for programmatic SSR control.

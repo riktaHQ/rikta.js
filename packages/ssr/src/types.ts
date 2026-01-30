@@ -42,6 +42,21 @@ export interface SsrOptions {
    * Custom Vite configuration overrides
    */
   viteConfig?: Record<string, unknown>;
+
+  /**
+   * DI Container for resolving guards, middleware, interceptors, and controllers.
+   * If provided, SSR routes can use @UseGuards(), @UseMiddleware(), and @UseInterceptors()
+   * from @riktajs/core.
+   * 
+   * @example
+   * ```typescript
+   * await app.server.register(ssrPlugin, {
+   *   root: process.cwd(),
+   *   container: app.container, // Pass the Rikta app container
+   * });
+   * ```
+   */
+  container?: { resolve: <T>(token: Constructor<T>) => T };
 }
 
 /**

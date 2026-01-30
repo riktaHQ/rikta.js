@@ -1,5 +1,7 @@
-import { Get, Param, Query } from '@riktajs/core';
+import { Get, Param, Query, UseGuards, Req } from '@riktajs/core';
+import type { FastifyRequest } from 'fastify';
 import { SsrController, Ssr, Head } from '@riktajs/ssr';
+import { AuthGuard, OptionalAuthGuard } from '../guards/index.js';
 
 /**
  * Page Controller - SSR-rendered pages
@@ -21,8 +23,10 @@ import { SsrController, Ssr, Head } from '@riktajs/ssr';
 export class PageController {
   /**
    * Home page - the main landing page
+   * Uses OptionalAuthGuard to detect if user is logged in without blocking
    */
   @Get('/')
+  @UseGuards(OptionalAuthGuard)
   @Ssr({
     title: 'Rikta SSR + React',
     description: 'A fullstack TypeScript framework with server-side rendering',
@@ -41,10 +45,12 @@ export class PageController {
       Head.link('icon', '/favicon.ico'),
     ]
   })
-  home() {
+  home(@Req() request: FastifyRequest) {
+    const user = (request as any).user;
     return {
       page: 'home',
-      user: 'cia',
+      user: user?.name || 'Guest',
+      isAuthenticated: !!user?.authenticated,
       timestamp: new Date().toISOString(),
       env: process.env.NODE_ENV || 'development',
     };
@@ -125,6 +131,40 @@ export class PageController {
       query: query || '',
       results,
       total: results.length,
+    };
+  }
+
+  /**
+   * Dashboard page - Protected route requiring authentication
+   * 
+   * Uses AuthGuard to ensure only authenticated users can access.
+   * If the guard fails, a 403 Forbidden error is returned.
+   */
+  @Get('/dashboard')
+  @UseGuards(AuthGuard)
+  @Ssr({
+    title: 'Dashboard',
+    description: 'Your personal dashboard',
+    robots: 'noindex, nofollow', // Don't index authenticated pages
+  })
+  dashboard(@Req() request: FastifyRequest) {
+    const user = (request as any).user;
+    return {
+      page: 'dashboard',
+      user: {
+        id: user?.id,
+        name: user?.name,
+      },
+      stats: {
+        views: 1234,
+        likes: 567,
+        comments: 89,
+      },
+      recentActivity: [
+        { action: 'Viewed article', time: '2 minutes ago' },
+        { action: 'Left a comment', time: '1 hour ago' },
+        { action: 'Updated profile', time: '3 days ago' },
+      ],
     };
   }
 }

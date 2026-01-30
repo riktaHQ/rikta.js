@@ -1,5 +1,25 @@
-import { Get, Param } from '@riktajs/core';
+import { Get, Param, UseGuards, Req } from '@riktajs/core';
+import type { FastifyRequest } from 'fastify';
 import { SsrController, Ssr, Head } from '@riktajs/ssr';
+
+/**
+ * Example Auth Guard for SSR routes
+ * Move this to a separate file in production: src/guards/auth.guard.ts
+ */
+class OptionalAuthGuard {
+  canActivate(context: { switchToHttp: () => { getRequest: () => FastifyRequest } }): boolean {
+    const request = context.switchToHttp().getRequest();
+    const authToken = (request.headers as any)['x-auth-token'] || (request as any).cookies?.['auth-token'];
+    
+    if (authToken) {
+      (request as any).user = { id: 'user-123', name: 'Demo User', authenticated: true };
+    } else {
+      (request as any).user = null;
+    }
+    
+    return true; // Always allow - just enriches request
+  }
+}
 
 /**
  * Page Controller - SSR-rendered pages
@@ -9,6 +29,9 @@ import { SsrController, Ssr, Head } from '@riktajs/ssr';
  *
  * The `defaults` option allows you to set common metadata for all routes
  * in this controller, which can be overridden by individual @Ssr() decorators.
+ * 
+ * SSR routes support @UseGuards(), @UseMiddleware(), and @UseInterceptors()
+ * decorators just like regular controllers.
  */
 @SsrController({
   defaults: {
@@ -24,9 +47,10 @@ import { SsrController, Ssr, Head } from '@riktajs/ssr';
 export class PageController {
   /**
    * Home page
-   * Inherits og.siteName, og.type, and head from controller defaults
+   * Uses OptionalAuthGuard to detect logged-in users without blocking access
    */
   @Get('/')
+  @UseGuards(OptionalAuthGuard)
   @Ssr({
     title: 'Welcome to Rikta',
     description: 'A fullstack TypeScript framework with SSR',
@@ -35,9 +59,12 @@ export class PageController {
       description: 'Build fullstack TypeScript apps with ease',
     },
   })
-  home() {
+  home(@Req() request: FastifyRequest) {
+    const user = (request as any).user;
     return {
       page: 'home',
+      user: user?.name || 'Guest',
+      isAuthenticated: !!user?.authenticated,
       timestamp: new Date().toISOString(),
       env: process.env.NODE_ENV || 'development',
     };
