@@ -82,8 +82,8 @@ export function useFetch<T = unknown>(
   // Use ref to track current fetch to handle race conditions
   const fetchIdRef = useRef(0);
 
-  const fetchData = useCallback(async () => {
-    if (skip) return;
+  const doFetch = useCallback(async (ignoreSkip = false) => {
+    if (skip && !ignoreSkip) return;
 
     const fetchId = ++fetchIdRef.current;
     setState(prev => ({ ...prev, loading: true, error: null }));
@@ -117,16 +117,17 @@ export function useFetch<T = unknown>(
   // Fetch on mount and when dependencies change
   useEffect(() => {
     mountedRef.current = true;
-    fetchData();
+    doFetch();
 
     return () => {
       mountedRef.current = false;
     };
-  }, [fetchData, ...deps]);
+  }, [doFetch, ...deps]);
 
+  // refetch ignores skip option to allow manual triggering
   const refetch = useCallback(async () => {
-    await fetchData();
-  }, [fetchData]);
+    await doFetch(true);
+  }, [doFetch]);
 
   return {
     ...state,

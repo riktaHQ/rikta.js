@@ -14,7 +14,7 @@ export class PageController {
    */
   @Get('/')
   @Ssr({
-    title: 'aaa SSR + React',
+    title: 'Rikta SSR + React',
     description: 'A fullstack TypeScript framework with server-side rendering',
     og: {
       title: 'Rikta SSR + React',
