@@ -41,7 +41,17 @@ const sidebars: SidebarsConfig = {
         'techniques/custom-decorators',
         'techniques/logging',
         'techniques/queues',
-        'techniques/ssr'
+      ],
+    },
+    {
+      type: 'category',
+      label: 'SSR',
+      items: [
+        'ssr/introduction',
+        'ssr/react',
+        'ssr/decorators',
+        'ssr/configuration',
+        'ssr/production',
       ],
     },
     {
