@@ -1,11 +1,10 @@
 import React from 'react';
+import { Link, useLocation } from '@riktajs/react';
 import { styles } from './styles.js';
 
-interface NavigationProps {
-  currentPath: string;
-}
+export function Navigation() {
+  const { pathname } = useLocation();
 
-export function Navigation({ currentPath }: NavigationProps) {
   const links = [
     { href: '/', label: 'Home' },
     { href: '/about', label: 'About' },
@@ -16,16 +15,16 @@ export function Navigation({ currentPath }: NavigationProps) {
   return (
     <nav style={styles.nav}>
       {links.map((link) => (
-        <a
+        <Link
           key={link.href}
           href={link.href}
           style={{
             ...styles.navLink,
-            background: currentPath === link.href ? 'rgba(0, 217, 255, 0.2)' : 'transparent',
+            background: pathname === link.href ? 'rgba(0, 217, 255, 0.2)' : 'transparent',
           }}
         >
           {link.label}
-        </a>
+        </Link>
       ))}
     </nav>
   );

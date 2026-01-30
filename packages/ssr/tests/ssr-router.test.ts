@@ -147,7 +147,7 @@ describe('SsrRouter', () => {
       const handler = handlerCall[1];
 
       // Create mock request/reply
-      const mockRequest = { url: '/' };
+      const mockRequest = { url: '/', headers: {} };
       const mockReply = {
         type: vi.fn().mockReturnThis(),
         send: vi.fn().mockReturnThis(),
@@ -189,7 +189,7 @@ describe('SsrRouter', () => {
       router.registerController(PageController, true);
 
       const handler = mockFastify.get.mock.calls[0][1];
-      const mockRequest = { url: '/' };
+      const mockRequest = { url: '/', headers: {} };
       const mockReply = {
         type: vi.fn().mockReturnThis(),
         send: vi.fn().mockReturnThis(),
@@ -221,7 +221,7 @@ describe('SsrRouter', () => {
       router.registerController(PageController, true);
 
       const handler = mockFastify.get.mock.calls[0][1];
-      const mockRequest = { url: '/' };
+      const mockRequest = { url: '/', headers: {} };
       const mockReply = {
         type: vi.fn().mockReturnThis(),
         send: vi.fn().mockReturnThis(),
@@ -251,7 +251,7 @@ describe('SsrRouter', () => {
       router.registerController(PageController, true);
 
       const handler = mockFastify.get.mock.calls[0][1];
-      const mockRequest = { url: '/' };
+      const mockRequest = { url: '/', headers: {} };
       const mockReply = {
         type: vi.fn().mockReturnThis(),
         send: vi.fn().mockReturnThis(),
@@ -281,7 +281,7 @@ describe('SsrRouter', () => {
       router.registerController(PageController, true);
 
       const handler = mockFastify.get.mock.calls[0][1];
-      const mockRequest = { url: '/' };
+      const mockRequest = { url: '/', headers: {} };
       const mockReply = {
         type: vi.fn().mockReturnThis(),
         send: vi.fn().mockReturnThis(),
@@ -340,4 +340,78 @@ describe('SsrRouter', () => {
       expect(mockFastify.get).toHaveBeenCalledWith('/pages/', expect.any(Function));
     });
   });
-});
+
+  describe('client-side navigation data fetch', () => {
+    it('should return JSON when X-Rikta-Data header is present', async () => {
+      @SsrController()
+      class PageController {
+        @Get('/')
+        @Ssr({ title: 'Home Page', description: 'Welcome to home' })
+        home() {
+          return { page: 'home', features: ['a', 'b'] };
+        }
+      }
+
+      router.registerController(PageController, true);
+
+      const handler = mockFastify.get.mock.calls[0][1];
+      const mockRequest = {
+        url: '/',
+        headers: { 'x-rikta-data': '1' },
+      };
+      const mockReply = {
+        type: vi.fn().mockReturnThis(),
+        send: vi.fn().mockReturnThis(),
+        header: vi.fn().mockReturnThis(),
+        status: vi.fn().mockReturnThis(),
+      };
+
+      await handler(mockRequest, mockReply);
+
+      // Should NOT call SSR render
+      expect(mockSsrService.render).not.toHaveBeenCalled();
+
+      // Should return JSON with normalized structure
+      expect(mockReply.type).toHaveBeenCalledWith('application/json');
+      expect(mockReply.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: { page: 'home', features: ['a', 'b'] },
+          url: '/',
+          title: 'Home Page',
+          description: 'Welcome to home',
+        })
+      );
+    });
+
+    it('should return JSON without metadata when @Ssr decorator has no options', async () => {
+      @SsrController()
+      class PageController {
+        @Get('/')
+        home() {
+          return { page: 'home' };
+        }
+      }
+
+      router.registerController(PageController, true);
+
+      const handler = mockFastify.get.mock.calls[0][1];
+      const mockRequest = {
+        url: '/test?q=search',
+        headers: { 'x-rikta-data': '1' },
+      };
+      const mockReply = {
+        type: vi.fn().mockReturnThis(),
+        send: vi.fn().mockReturnThis(),
+        header: vi.fn().mockReturnThis(),
+        status: vi.fn().mockReturnThis(),
+      };
+
+      await handler(mockRequest, mockReply);
+
+      expect(mockReply.type).toHaveBeenCalledWith('application/json');
+      expect(mockReply.send).toHaveBeenCalledWith({
+        data: { page: 'home' },
+        url: '/test?q=search',
+      });
+    });
+  });});

@@ -156,7 +156,31 @@ export class SsrRouter {
         // Call the controller method to get context data
         const contextData = await handler.apply(controllerInstance, args);
 
-        // Build extended context
+        // Check if client is requesting just the data (for client-side navigation)
+        const wantsData = request.headers['x-rikta-data'] === '1';
+        
+        if (wantsData) {
+          // Return just the data as JSON for client-side navigation
+          const responseData = {
+            data: contextData,
+            url: request.url,
+          };
+          
+          // Add metadata from @Ssr decorator
+          const opts = ssrRouteMeta?.options;
+          if (opts) {
+            if (opts.title !== undefined) {
+              (responseData as Record<string, unknown>).title = opts.title;
+            }
+            if (opts.description !== undefined) {
+              (responseData as Record<string, unknown>).description = opts.description;
+            }
+          }
+          
+          return reply.type('application/json').send(responseData);
+        }
+
+        // Build extended context for SSR
         // Decorator metadata (from @Ssr) takes precedence over contextData
         const context: SsrExtendedContext = {
           url: request.url,

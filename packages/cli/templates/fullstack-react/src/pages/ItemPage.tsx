@@ -1,19 +1,25 @@
 import React from 'react';
+import { useSsrData, Link } from '@riktajs/react';
 import { styles } from '../components/styles.js';
 
-interface ItemPageProps {
-  serverData: Record<string, unknown>;
+interface ItemData {
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  category: string;
 }
 
-export function ItemPage({ serverData }: ItemPageProps) {
-  const item = serverData.item as { 
-    id: string; 
-    title: string; 
-    description: string;
-    price: number;
-    category: string;
-  } | null;
-  const notFound = serverData.notFound as boolean;
+interface ItemPageData {
+  page: string;
+  item: ItemData | null;
+  notFound: boolean;
+}
+
+export function ItemPage() {
+  const ssrData = useSsrData<ItemPageData>();
+  const item = ssrData?.data.item ?? null;
+  const notFound = ssrData?.data.notFound ?? false;
 
   if (notFound || !item) {
     return (
@@ -22,7 +28,7 @@ export function ItemPage({ serverData }: ItemPageProps) {
         <p style={{ color: '#888', marginBottom: '1.5rem' }}>
           The item you're looking for doesn't exist.
         </p>
-        <a href="/item/1" style={styles.link}>← Back to Item #1</a>
+        <Link href="/item/1" style={styles.link}>← Back to Item #1</Link>
       </div>
     );
   }
@@ -67,11 +73,11 @@ export function ItemPage({ serverData }: ItemPageProps) {
       <div style={styles.card}>
         <h3 style={{ ...styles.cardTitle, fontSize: '1.2rem' }}>Browse Other Items</h3>
         <p style={{ color: '#888', marginBottom: '1rem' }}>
-          Click on any item below to view its details:
+          Using <code>&lt;Link&gt;</code> for client-side navigation:
         </p>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           {availableItems.map((id) => (
-            <a
+            <Link
               key={id}
               href={`/item/${id}`}
               style={{
@@ -87,15 +93,18 @@ export function ItemPage({ serverData }: ItemPageProps) {
               }}
             >
               Item #{id}
-            </a>
+            </Link>
           ))}
+        </div>
+        <div style={{ marginTop: '1rem' }}>
+          <Link href="/" style={styles.link}>← Back to Home</Link>
         </div>
       </div>
 
       <div style={styles.card}>
-        <h3 style={{ ...styles.cardTitle, fontSize: '1.2rem' }}>Server Data (SSR)</h3>
+        <h3 style={{ ...styles.cardTitle, fontSize: '1.2rem' }}>Server Data (useSsrData hook)</h3>
         <p style={{ color: '#888', marginBottom: '1rem' }}>
-          This data was fetched on the server and passed to the client via SSR:
+          This data was fetched on the server and accessed via <code>useSsrData()</code>:
         </p>
         <pre style={{ 
           background: 'rgba(0, 0, 0, 0.3)', 
@@ -105,7 +114,7 @@ export function ItemPage({ serverData }: ItemPageProps) {
           color: '#00ff88',
           fontSize: '0.875rem'
         }}>
-          {JSON.stringify(serverData, null, 2)}
+          {JSON.stringify(ssrData?.data, null, 2)}
         </pre>
       </div>
     </>

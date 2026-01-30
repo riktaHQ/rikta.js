@@ -1,39 +1,36 @@
 import React, { useState } from 'react';
+import { useSsrData, useFetch, Link } from '@riktajs/react';
 import { styles } from '../components/styles.js';
 
-interface HomePageProps {
-  serverData: Record<string, unknown>;
+interface HomePageData {
+  page: string;
+  timestamp: string;
+  env: string;
 }
 
-export function HomePage({ serverData }: HomePageProps) {
+export function HomePage() {
+  const ssrData = useSsrData<HomePageData>();
+  const serverData = ssrData?.data ?? {};
   const [count, setCount] = useState(0);
-  const [message, setMessage] = useState('');
+  
+  // useFetch example - skip initial fetch, triggered manually
+  const { data: apiData, loading, error, refetch } = useFetch<{ message: string }>('/api/hello', { skip: true });
 
   const features = [
     { icon: '⚡', title: 'Vite-powered', desc: 'Blazing fast HMR and builds' },
     { icon: '⚛️', title: 'React 19', desc: 'Latest React with SSR support' },
     { icon: '🚀', title: 'Fastify', desc: 'High-performance HTTP server' },
     { icon: '🎯', title: 'TypeScript', desc: 'Full type safety' },
-    { icon: '💎', title: '@riktajs/ssr', desc: 'Decorator-based SSR routing' },
+    { icon: '💎', title: '@riktajs/react', desc: 'React hooks for SSR & routing' },
   ];
-
-  const handleApiCall = async () => {
-    try {
-      const response = await fetch('/api/hello');
-      const data = await response.json();
-      setMessage(data.message);
-    } catch (error) {
-      setMessage('Error fetching from API');
-    }
-  };
 
   return (
     <>
       <div style={styles.card}>
-        <h2 style={styles.cardTitle}>🎉 Decorator-Based SSR</h2>
+        <h2 style={styles.cardTitle}>🎉 @riktajs/react Integration</h2>
         <p style={{ color: '#888', marginBottom: '1rem' }}>
-          This page is rendered using the new <code>@SsrController()</code> and <code>@Ssr()</code> decorators.
-          Define SSR routes just like API routes!
+          This page uses <code>useSsrData()</code> hook to access server data.
+          Navigation uses <code>&lt;Link&gt;</code> component for client-side routing!
         </p>
         <pre style={{ 
           background: 'rgba(0, 0, 0, 0.3)', 
@@ -43,13 +40,12 @@ export function HomePage({ serverData }: HomePageProps) {
           color: '#00ff88',
           fontSize: '0.85rem',
         }}>
-{`@SsrController()
-class PageController {
-  @Get('/')
-  @Ssr({ title: 'Home Page' })
-  home() {
-    return { page: 'home' };
-  }
+{`import { useSsrData, Link, useFetch } from '@riktajs/react';
+
+function HomePage() {
+  const ssrData = useSsrData<PageData>();
+  const { data, refetch } = useFetch('/api/hello');
+  return <Link href="/item/1">View Item</Link>;
 }`}
         </pre>
       </div>
@@ -71,12 +67,18 @@ class PageController {
       </div>
 
       <div style={styles.card}>
-        <h2 style={styles.cardTitle}>API Integration</h2>
-        <button style={styles.button} onClick={handleApiCall}>
-          Call /api/hello
+        <h2 style={styles.cardTitle}>API Integration with useFetch</h2>
+        <p style={{ color: '#888', marginBottom: '1rem' }}>
+          Using the <code>useFetch()</code> hook for data fetching:
+        </p>
+        <button style={styles.button} onClick={refetch} disabled={loading}>
+          {loading ? 'Loading...' : 'Call /api/hello'}
         </button>
-        {message && (
-          <p style={{ marginTop: '1rem', color: '#00ff88' }}>Response: {message}</p>
+        {error && (
+          <p style={{ marginTop: '1rem', color: '#ff6b6b' }}>Error: {error}</p>
+        )}
+        {apiData && (
+          <p style={{ marginTop: '1rem', color: '#00ff88' }}>Response: {apiData.message}</p>
         )}
       </div>
 
@@ -96,25 +98,25 @@ class PageController {
       </div>
 
       <div style={styles.card}>
-        <h2 style={styles.cardTitle}>🔗 Dynamic Routes</h2>
+        <h2 style={styles.cardTitle}>🔗 Dynamic Routes with Link</h2>
         <p style={{ color: '#888', marginBottom: '1rem' }}>
-          Check out our dynamic route example with parameter handling:
+          Using <code>&lt;Link&gt;</code> component for client-side navigation:
         </p>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <a href="/item/1" style={{ ...styles.button, textDecoration: 'none', display: 'inline-block' }}>
+          <Link href="/item/1" style={{ ...styles.button, textDecoration: 'none', display: 'inline-block' }}>
             View Item #1
-          </a>
-          <a href="/item/2" style={{ ...styles.button, textDecoration: 'none', display: 'inline-block' }}>
+          </Link>
+          <Link href="/item/2" style={{ ...styles.button, textDecoration: 'none', display: 'inline-block' }}>
             View Item #2
-          </a>
-          <a href="/item/3" style={{ ...styles.button, textDecoration: 'none', display: 'inline-block' }}>
+          </Link>
+          <Link href="/item/3" style={{ ...styles.button, textDecoration: 'none', display: 'inline-block' }}>
             View Item #3
-          </a>
+          </Link>
         </div>
       </div>
 
       <div style={styles.card}>
-        <h2 style={styles.cardTitle}>Server Data (from @Ssr context)</h2>
+        <h2 style={styles.cardTitle}>Server Data (from useSsrData hook)</h2>
         <pre style={{ 
           background: 'rgba(0, 0, 0, 0.3)', 
           padding: '1rem', 

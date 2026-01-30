@@ -13,6 +13,7 @@ const defaultRouterContext: RouterContextValue = {
   },
   params: {},
   setParams: () => {},
+  isNavigating: false,
 };
 
 /**

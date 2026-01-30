@@ -148,6 +148,65 @@ Your `index.html` should include placeholders for SSR content:
 
 ## API Reference
 
+### Decorators
+
+#### `@SsrController(prefix?: string)`
+
+Marks a class as an SSR controller with optional route prefix.
+
+```typescript
+import { SsrController, Ssr, Get } from '@riktajs/ssr';
+
+@SsrController('/pages')
+export class PageController {
+  @Get('/')
+  @Ssr({ title: 'Home Page', description: 'Welcome to our site' })
+  home() {
+    return { page: 'home', features: ['fast', 'secure'] };
+  }
+}
+```
+
+#### `@Ssr(options)`
+
+Configures SSR metadata for a route handler.
+
+```typescript
+@Ssr({
+  title: 'Page Title',
+  description: 'SEO description',
+  og: { image: '/og-image.png', type: 'website' },
+  twitter: { card: 'summary_large_image' },
+  canonical: 'https://example.com/page',
+  robots: 'index, follow',
+  cache: { maxAge: 60, staleWhileRevalidate: 120 },
+})
+```
+
+### Client-Side Navigation Data Fetching
+
+When using `@riktajs/react` with SSR, the framework supports automatic data fetching for client-side navigation. When a client navigates to a new page, the `RiktaProvider` fetches the SSR data via a special header:
+
+```
+X-Rikta-Data: 1
+```
+
+The server responds with JSON instead of full HTML:
+
+```json
+{
+  "data": { "page": "about", "features": [...] },
+  "url": "/about",
+  "title": "About - My App",
+  "description": "Learn more about our company"
+}
+```
+
+This enables:
+- **Seamless navigation** without page reloads
+- **Consistent data** between SSR and client navigation
+- **SEO metadata** passed to client for title updates
+
 ### `ssrPlugin`
 
 Fastify plugin that enables SSR capabilities.

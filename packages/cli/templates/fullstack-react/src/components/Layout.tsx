@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from '@riktajs/react';
 import { styles } from './styles.js';
 
 interface LayoutProps {
@@ -24,13 +25,13 @@ export function Layout({ url, title, children }: LayoutProps) {
       <footer style={styles.footer}>
         <p>
           Built with{' '}
-          <a href="https://github.com/riktar/riktajs" style={styles.link}>
+          <Link href="https://github.com/riktar/riktajs" style={styles.link}>
             Rikta Framework
-          </a>
+          </Link>
         </p>
         <p style={{ marginTop: '0.5rem' }}>
           <span style={styles.badge}>SSR Enabled</span>
-          <span style={{ ...styles.badge, marginLeft: '0.5rem' }}>Decorator-Based</span>
+          <span style={{ ...styles.badge, marginLeft: '0.5rem' }}>@riktajs/react</span>
         </p>
       </footer>
     </div>

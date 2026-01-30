@@ -22,7 +22,8 @@ async function bootstrap() {
   });
 
   // Register SSR plugin
-  await app.server.register(ssrPlugin, {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (app.server.register as any)(ssrPlugin, {
     root: isDev ? resolve(__dirname, '..') : __dirname,
     entryServer: isDev ? './src/entry-server.tsx' : './server/entry-server.js',
     template: isDev ? './index.html' : './client/index.html',
@@ -31,7 +32,8 @@ async function bootstrap() {
   });
 
   // Register SSR controller
-  app.server.registerSsrController(PageController);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (app.server as any).registerSsrController(PageController);
 
   await app.listen();
 

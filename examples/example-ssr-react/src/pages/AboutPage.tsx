@@ -1,12 +1,15 @@
 import React from 'react';
+import { useSsrData, Link } from '@riktajs/react';
 import { styles } from '../components/styles.js';
 
-interface AboutPageProps {
-  serverData: Record<string, unknown>;
+interface AboutPageData {
+  page: string;
+  features: string[];
 }
 
-export function AboutPage({ serverData }: AboutPageProps) {
-  const features = (serverData.features as string[]) || [];
+export function AboutPage() {
+  const ssrData = useSsrData<AboutPageData>();
+  const features = ssrData?.data?.features ?? [];
 
   return (
     <div style={styles.card}>

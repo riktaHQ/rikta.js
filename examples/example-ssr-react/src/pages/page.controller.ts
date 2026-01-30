@@ -14,7 +14,7 @@ export class PageController {
    */
   @Get('/')
   @Ssr({
-    title: 'Rikta SSR + React',
+    title: 'aaa SSR + React',
     description: 'A fullstack TypeScript framework with server-side rendering',
     og: {
       title: 'Rikta SSR + React',
@@ -36,7 +36,7 @@ export class PageController {
   home() {
     return {
       page: 'home',
-      user: null,
+      user: 'cia',
       timestamp: new Date().toISOString(),
       env: process.env.NODE_ENV || 'development',
     };

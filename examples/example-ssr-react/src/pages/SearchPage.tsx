@@ -1,20 +1,36 @@
 import React from 'react';
+import { useSsrData, useSearchParams, useNavigation } from '@riktajs/react';
 import { styles } from '../components/styles.js';
 
-interface SearchPageProps {
-  serverData: Record<string, unknown>;
+interface SearchPageData {
+  page: string;
+  query: string;
+  results: Array<{ id: number; title: string; type: string }>;
+  total: number;
 }
 
-export function SearchPage({ serverData }: SearchPageProps) {
-  const query = (serverData.query as string) || '';
-  const results = (serverData.results as Array<{ id: number; title: string; type: string }>) || [];
-  const total = (serverData.total as number) || 0;
+export function SearchPage() {
+  const ssrData = useSsrData<SearchPageData>();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { navigate } = useNavigation();
+  
+  const query = ssrData?.data?.query || '';
+  const results = ssrData?.data?.results || [];
+  const total = ssrData?.data?.total || 0;
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const q = formData.get('q') as string;
+    // Use client-side navigation with search params
+    navigate(`/search?q=${encodeURIComponent(q)}`);
+  };
 
   return (
     <div style={styles.card}>
       <h2 style={styles.cardTitle}>🔍 Search</h2>
       
-      <form action="/search" method="get">
+      <form onSubmit={handleSubmit}>
         <input
           type="text"
           name="q"

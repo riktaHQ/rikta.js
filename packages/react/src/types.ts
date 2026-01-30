@@ -7,6 +7,10 @@ export interface SsrData<T = unknown> {
   data: T;
   /** Current URL path */
   url: string;
+  /** Page title (from @Ssr decorator) */
+  title?: string;
+  /** Page description (from @Ssr decorator) */
+  description?: string;
   /** HTTP status code */
   status?: number;
   /** Additional metadata */
@@ -24,11 +28,13 @@ export interface RouterContextValue {
   /** Full URL */
   href: string;
   /** Navigate to a new URL */
-  navigate: (url: string, options?: NavigateOptions) => void;
+  navigate: (url: string, options?: NavigateOptions) => void | Promise<void>;
   /** Extracted route params (e.g., { id: '123' } for /item/:id) */
   params: Record<string, string>;
   /** Update route params (used internally by RiktaProvider) */
   setParams: (params: Record<string, string>) => void;
+  /** Whether a navigation is in progress */
+  isNavigating?: boolean;
 }
 
 /**

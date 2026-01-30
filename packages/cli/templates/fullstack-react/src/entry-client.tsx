@@ -1,25 +1,21 @@
 import React from 'react';
 import { hydrateRoot } from 'react-dom/client';
+import { RiktaProvider } from '@riktajs/react';
 import { App } from './App';
-
-// Extend Window interface for SSR data
-declare global {
-  interface Window {
-    __SSR_DATA__?: Record<string, unknown>;
-  }
-}
 
 /**
  * Client-side hydration entry point
+ * 
+ * RiktaProvider automatically picks up window.__SSR_DATA__
+ * and provides routing context to the entire app.
  */
 const container = document.getElementById('app');
-
-// Get SSR data injected by server
-const serverData = window.__SSR_DATA__ || {};
 
 if (container) {
   hydrateRoot(
     container,
-    <App url={window.location.pathname + window.location.search} serverData={serverData} />
+    <RiktaProvider>
+      <App />
+    </RiktaProvider>
   );
 }

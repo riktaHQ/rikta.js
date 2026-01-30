@@ -1,13 +1,17 @@
 import React from 'react';
+import { useSsrData, Link } from '@riktajs/react';
 import { styles } from '../components/styles.js';
 
-interface UserPageProps {
-  serverData: Record<string, unknown>;
+interface UserPageData {
+  page: string;
+  user: { id: string; name: string; bio: string } | null;
+  notFound: boolean;
 }
 
-export function UserPage({ serverData }: UserPageProps) {
-  const user = serverData.user as { id: string; name: string; bio: string } | null;
-  const notFound = serverData.notFound as boolean;
+export function UserPage() {
+  const ssrData = useSsrData<UserPageData>();
+  const user = ssrData?.data?.user ?? null;
+  const notFound = ssrData?.data?.notFound ?? false;
 
   if (notFound || !user) {
     return (
@@ -16,7 +20,7 @@ export function UserPage({ serverData }: UserPageProps) {
         <p style={{ color: '#888' }}>
           The user you're looking for doesn't exist.
         </p>
-        <a href="/user/1" style={styles.link}>Try User #1</a>
+        <Link href="/user/1" style={styles.link}>Try User #1</Link>
       </div>
     );
   }
@@ -33,7 +37,7 @@ export function UserPage({ serverData }: UserPageProps) {
         <p style={{ color: '#666', fontSize: '0.9rem' }}>Try other users:</p>
         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
           {['1', '2', '3'].map((id) => (
-            <a
+            <Link
               key={id}
               href={`/user/${id}`}
               style={{
@@ -42,7 +46,7 @@ export function UserPage({ serverData }: UserPageProps) {
               }}
             >
               User {id}
-            </a>
+            </Link>
           ))}
         </div>
       </div>

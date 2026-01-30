@@ -1,5 +1,6 @@
 import React from 'react';
 import { renderToString } from 'react-dom/server';
+import { RiktaProvider, type SsrData } from '@riktajs/react';
 import { App } from './App';
 import { HeadBuilder } from '@riktajs/ssr';
 
@@ -8,8 +9,22 @@ import { HeadBuilder } from '@riktajs/ssr';
  * Called by @riktajs/ssr to render the application to HTML
  */
 export function render(url: string, context: Record<string, unknown> = {}) {
+  // Extract metadata from context (set by @Ssr decorator)
+  const { title: contextTitle, description: contextDescription, __SSR_DATA__, ...restContext } = context;
+  
+  // Create SSR data structure that RiktaProvider expects
+  // This structure must match what client hydration expects
+  const ssrData: SsrData = {
+    data: __SSR_DATA__ ?? restContext,
+    url,
+    title: contextTitle as string | undefined,
+    description: contextDescription as string | undefined,
+  };
+
   const html = renderToString(
-    <App url={url} serverData={context} />
+    <RiktaProvider ssrData={ssrData}>
+      <App />
+    </RiktaProvider>
   );
 
   // Build head tags using HeadBuilder
@@ -49,8 +64,8 @@ export function render(url: string, context: Record<string, unknown> = {}) {
     head.addTags(context.head);
   }
 
-  // Add SSR data for client hydration
-  head.withSsrData(context);
+  // Add SSR data for client hydration (must match structure expected by client)
+  head.withSsrData(ssrData as unknown as Record<string, unknown>);
   
   return {
     html,

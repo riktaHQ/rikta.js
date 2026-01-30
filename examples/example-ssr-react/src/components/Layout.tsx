@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from '@riktajs/react';
 import { Navigation } from './Navigation.js';
 import { styles } from './styles.js';
 
@@ -20,20 +21,20 @@ export function Layout({ url, title, children }: LayoutProps) {
         </p>
       </header>
 
-      <Navigation currentPath={url.split('?')[0]} />
+      <Navigation />
 
       {children}
 
       <footer style={styles.footer}>
         <p>
           Built with{' '}
-          <a href="https://github.com/riktar/riktajs" style={styles.link}>
+          <Link href="https://github.com/riktar/riktajs" style={styles.link}>
             Rikta Framework
-          </a>
+          </Link>
         </p>
         <p style={{ marginTop: '0.5rem' }}>
           <span style={styles.badge}>SSR Enabled</span>
-          <span style={{ ...styles.badge, marginLeft: '0.5rem' }}>Decorator-Based</span>
+          <span style={{ ...styles.badge, marginLeft: '0.5rem' }}>@riktajs/react</span>
         </p>
       </footer>
     </div>

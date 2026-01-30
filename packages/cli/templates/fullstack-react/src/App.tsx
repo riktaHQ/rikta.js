@@ -1,27 +1,35 @@
 import React from 'react';
+import { useSsrData, useLocation } from '@riktajs/react';
 import { Layout } from './components/Layout.js';
 import { HomePage } from './pages/HomePage.js';
 import { ItemPage } from './pages/ItemPage.js';
 import './App.css';
 
-interface AppProps {
-  url?: string;
-  serverData?: Record<string, unknown>;
+interface SsrDataType {
+  page?: string;
+  title?: string;
+  [key: string]: unknown;
 }
 
-export function App({ url = '/', serverData = {} }: AppProps) {
-  const page = serverData.page as string | undefined;
-  const title = (serverData.title as string) || 'Rikta App';
+export function App() {
+  const ssrData = useSsrData<SsrDataType>();
+  const { search } = useLocation();
+  
+  // Title comes from ssrData root level (set by @Ssr decorator)
+  const title = ssrData?.title || 'Rikta App';
+  
+  // Use URL from ssrData for routing - this ensures data and route are in sync
+  const ssrUrl = ssrData?.url ?? '/';
+  const pathname = ssrUrl.split('?')[0];
+  const url = search ? `${pathname}?${search}` : pathname;
 
-  // Render the appropriate page based on the page prop from server
+  // Render the appropriate page based on ssrData URL (not from separate context)
   const renderPage = () => {
-    switch (page) {
-      case 'item':
-        return <ItemPage serverData={serverData} />;
-      case 'home':
-      default:
-        return <HomePage serverData={serverData} />;
+    if (pathname.startsWith('/item/')) {
+      return <ItemPage />;
     }
+    // Default to home
+    return <HomePage />;
   };
 
   return (

@@ -172,13 +172,17 @@ function Breadcrumbs() {
 
 ### `useSsrData()`
 
-Access SSR data passed from server via `window.__SSR_DATA__`.
+Access SSR data passed from server via `window.__SSR_DATA__`. The data structure includes:
+- `data`: The actual page data from the controller
+- `url`: The current URL
+- `title`: Page title (from `@Ssr` decorator)
+- `description`: Page description (from `@Ssr` decorator)
 
 ```tsx
 import { useSsrData } from '@riktajs/react';
 
 interface PageData {
-  title: string;
+  page: string;
   items: Array<{ id: string; name: string }>;
 }
 
@@ -187,15 +191,44 @@ function ItemList() {
   
   if (!ssrData) return <div>Loading...</div>;
   
+  // Access page data
+  const { data, title, url } = ssrData;
+  
   return (
     <div>
-      <h1>{ssrData.data.title}</h1>
+      <h1>{title ?? data.page}</h1>
+      <p>Current URL: {url}</p>
       <ul>
-        {ssrData.data.items.map(item => (
+        {data.items.map(item => (
           <li key={item.id}>{item.name}</li>
         ))}
       </ul>
     </div>
+  );
+}
+```
+
+### Client-Side Navigation with SSR Data Fetching
+
+When navigating client-side using `<Link>` or `navigate()`, `RiktaProvider` automatically fetches the SSR data for the new page from the server. This ensures:
+
+1. **No page flash**: Data is fetched before the route changes
+2. **Consistent data structure**: Same data shape as initial SSR
+3. **SEO metadata**: Title and description are updated automatically
+
+```tsx
+// App.tsx - Route based on ssrData.url for data consistency
+function App() {
+  const ssrData = useSsrData<{ page: string }>();
+  
+  // Use ssrData.url for routing to ensure data and route are in sync
+  const pathname = ssrData?.url?.split('?')[0] ?? '/';
+  
+  return (
+    <Layout title={ssrData?.title}>
+      {pathname === '/about' && <AboutPage />}
+      {pathname === '/' && <HomePage />}
+    </Layout>
   );
 }
 ```

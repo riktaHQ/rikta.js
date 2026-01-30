@@ -6,8 +6,21 @@ import type { RiktaProviderProps, SsrData, NavigateOptions } from '../types.js';
 /**
  * Get current location from window or fallback for SSR
  */
-function getLocationInfo() {
+function getLocationInfo(ssrUrl?: string) {
   if (typeof window === 'undefined') {
+    // During SSR, use the URL from ssrData if available
+    if (ssrUrl) {
+      try {
+        const url = new URL(ssrUrl, 'http://localhost');
+        return {
+          pathname: url.pathname,
+          search: url.search.slice(1),
+          href: ssrUrl,
+        };
+      } catch {
+        // Fall through to default
+      }
+    }
     return { pathname: '/', search: '', href: '/' };
   }
   return {
@@ -19,16 +32,45 @@ function getLocationInfo() {
 
 /**
  * Get SSR data from window
+ * Server now puts data in normalized format: { data, url, title, description }
  */
 function getSsrData(): SsrData | undefined {
   if (typeof window === 'undefined') return undefined;
-  return window.__SSR_DATA__;
+  
+  const rawData = window.__SSR_DATA__ as Record<string, unknown> | undefined;
+  if (!rawData) return undefined;
+  
+  // Data should already be in normalized format from entry-server
+  return rawData as unknown as SsrData;
+}
+
+/**
+ * Fetch SSR data from server for client-side navigation
+ */
+async function fetchSsrData(url: string): Promise<SsrData | null> {
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'X-Rikta-Data': '1',
+        'Accept': 'application/json',
+      },
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      return data as SsrData;
+    }
+  } catch (error) {
+    console.warn('[RiktaReact] Failed to fetch SSR data:', error);
+  }
+  return null;
 }
 
 /**
  * RiktaProvider - Main provider component for Rikta React utilities
  * 
  * Provides routing context, SSR data, and navigation utilities to the app.
+ * Automatically fetches new page data during client-side navigation.
  * 
  * @example
  * ```tsx
@@ -49,20 +91,26 @@ export const RiktaProvider: FC<RiktaProviderProps> = ({
   children,
 }) => {
   // Initialize SSR data from window or props
-  const [ssrData] = useState<SsrData | null>(() => {
+  const [ssrData, setSsrData] = useState<SsrData | null>(() => {
     return initialSsrData ?? getSsrData() ?? null;
   });
 
-  // Initialize location state
-  const [location, setLocation] = useState(getLocationInfo);
+  // Loading state for navigation
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  // Initialize location state - use URL from ssrData for SSR consistency
+  const [location, setLocation] = useState(() => {
+    const resolvedSsrData = initialSsrData ?? getSsrData();
+    return getLocationInfo(resolvedSsrData?.url);
+  });
   
   // Route params state
   const [params, setParams] = useState<Record<string, string>>(initialParams);
 
   /**
-   * Navigate to a new URL using History API
+   * Navigate to a new URL using History API with data fetching
    */
-  const navigate = useCallback((url: string, options: NavigateOptions = {}) => {
+  const navigate = useCallback(async (url: string, options: NavigateOptions = {}) => {
     const { replace = false, scroll = true, state } = options;
 
     if (typeof window === 'undefined') return;
@@ -82,6 +130,17 @@ export const RiktaProvider: FC<RiktaProviderProps> = ({
       return;
     }
 
+    // Start navigation
+    setIsNavigating(true);
+
+    // Fetch new SSR data from server BEFORE updating anything else
+    const newSsrData = await fetchSsrData(targetUrl.href);
+
+    // Update SSR data FIRST (before location changes)
+    if (newSsrData) {
+      setSsrData(newSsrData);
+    }
+
     // Update history
     if (replace) {
       window.history.replaceState(state ?? null, '', targetUrl.href);
@@ -89,7 +148,7 @@ export const RiktaProvider: FC<RiktaProviderProps> = ({
       window.history.pushState(state ?? null, '', targetUrl.href);
     }
 
-    // Update location state
+    // Update location state AFTER data is ready
     setLocation({
       pathname: targetUrl.pathname,
       search: targetUrl.search.slice(1),
@@ -101,16 +160,29 @@ export const RiktaProvider: FC<RiktaProviderProps> = ({
       window.scrollTo(0, 0);
     }
 
-    // Dispatch popstate event for any other listeners
-    window.dispatchEvent(new PopStateEvent('popstate', { state }));
+    // End navigation
+    setIsNavigating(false);
   }, []);
 
-  // Listen for popstate (browser back/forward)
+  // Listen for popstate (browser back/forward) and fetch data
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const handlePopState = () => {
-      setLocation(getLocationInfo());
+    const handlePopState = async () => {
+      const newLocation = getLocationInfo();
+      
+      // Fetch data for the new URL FIRST
+      setIsNavigating(true);
+      const newSsrData = await fetchSsrData(newLocation.href);
+      
+      // Update SSR data BEFORE location
+      if (newSsrData) {
+        setSsrData(newSsrData);
+      }
+      
+      // Then update location
+      setLocation(newLocation);
+      setIsNavigating(false);
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -125,7 +197,8 @@ export const RiktaProvider: FC<RiktaProviderProps> = ({
     navigate,
     params,
     setParams,
-  }), [location.pathname, location.search, location.href, navigate, params]);
+    isNavigating,
+  }), [location.pathname, location.search, location.href, navigate, params, isNavigating]);
 
   return (
     <SsrContext.Provider value={ssrData}>
