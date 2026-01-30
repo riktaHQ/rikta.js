@@ -6,17 +6,17 @@ export function Navigation() {
   const { pathname } = useLocation();
 
   const links = [
-    { href: '/', label: 'Home' },
-    { href: '/about', label: 'About' },
-    { href: '/user/1', label: 'User' },
-    { href: '/search', label: 'Search' },
+    { href: '/', label: 'Home', id: 'home' },
+    { href: '/about', label: 'About', id: 'about' },
+    { href: '/user/1', label: 'User', id: 'user' },
+    { href: '/search', label: 'Search', id: 'search' },
   ];
 
   return (
     <nav style={styles.nav}>
       {links.map((link) => (
         <Link
-          key={link.href}
+          key={link.id}
           href={link.href}
           style={{
             ...styles.navLink,

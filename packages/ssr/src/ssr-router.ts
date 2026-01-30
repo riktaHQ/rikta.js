@@ -7,7 +7,7 @@ import {
   SSR_ROUTE_METADATA,
 } from './decorators/constants.js';
 import type { SsrControllerMetadata } from './decorators/ssr-controller.decorator.js';
-import type { SsrRouteMetadata } from './decorators/ssr.decorator.js';
+import type { SsrRouteMetadata, SsrRouteOptions } from './decorators/ssr.decorator.js';
 
 // Use Symbol.for() for cross-package compatibility with @riktajs/core
 const ROUTES_METADATA = Symbol.for('rikta:routes:metadata');
@@ -41,6 +41,47 @@ interface RouteContext {
   params: Record<string, string>;
   query: Record<string, unknown>;
   body: unknown;
+}
+
+/**
+ * Merge controller defaults with route-specific options.
+ * Route options take precedence over controller defaults.
+ * For nested objects (og, twitter), properties are merged.
+ * For arrays (head), they are concatenated (defaults first, then route-specific).
+ */
+function mergeRouteOptions(
+  defaults: SsrRouteOptions,
+  routeOptions: SsrRouteOptions | undefined
+): SsrRouteOptions {
+  if (!routeOptions) {
+    return { ...defaults };
+  }
+
+  const merged: SsrRouteOptions = { ...defaults };
+
+  // Simple properties - route takes precedence
+  if (routeOptions.title !== undefined) merged.title = routeOptions.title;
+  if (routeOptions.description !== undefined) merged.description = routeOptions.description;
+  if (routeOptions.canonical !== undefined) merged.canonical = routeOptions.canonical;
+  if (routeOptions.robots !== undefined) merged.robots = routeOptions.robots;
+
+  // Nested objects - merge properties
+  if (routeOptions.og !== undefined) {
+    merged.og = { ...defaults.og, ...routeOptions.og };
+  }
+  if (routeOptions.twitter !== undefined) {
+    merged.twitter = { ...defaults.twitter, ...routeOptions.twitter };
+  }
+  if (routeOptions.cache !== undefined) {
+    merged.cache = { ...defaults.cache, ...routeOptions.cache };
+  }
+
+  // Arrays - concatenate (defaults first, then route-specific)
+  if (routeOptions.head !== undefined) {
+    merged.head = [...(defaults.head ?? []), ...routeOptions.head];
+  }
+
+  return merged;
 }
 
 /**
@@ -144,6 +185,12 @@ export class SsrRouter {
       ...ssrMeta.ssrOptions,
     };
 
+    // Merge route options: controller defaults -> @Ssr() decorator options
+    const mergedRouteOptions = mergeRouteOptions(
+      ssrMeta.defaults,
+      ssrRouteMeta?.options
+    );
+
     // Create the route handler
     const ssrHandler = async (
       request: FastifyRequest,
@@ -158,30 +205,27 @@ export class SsrRouter {
 
         // Check if client is requesting just the data (for client-side navigation)
         const wantsData = request.headers['x-rikta-data'] === '1';
-        
+
         if (wantsData) {
           // Return just the data as JSON for client-side navigation
-          const responseData = {
+          const responseData: Record<string, unknown> = {
             data: contextData,
             url: request.url,
           };
-          
-          // Add metadata from @Ssr decorator
-          const opts = ssrRouteMeta?.options;
-          if (opts) {
-            if (opts.title !== undefined) {
-              (responseData as Record<string, unknown>).title = opts.title;
-            }
-            if (opts.description !== undefined) {
-              (responseData as Record<string, unknown>).description = opts.description;
-            }
+
+          // Add metadata from merged options (controller defaults + @Ssr decorator)
+          if (mergedRouteOptions.title !== undefined) {
+            responseData.title = mergedRouteOptions.title;
           }
-          
+          if (mergedRouteOptions.description !== undefined) {
+            responseData.description = mergedRouteOptions.description;
+          }
+
           return reply.type('application/json').send(responseData);
         }
 
         // Build extended context for SSR
-        // Decorator metadata (from @Ssr) takes precedence over contextData
+        // Decorator metadata takes precedence over contextData
         const context: SsrExtendedContext = {
           url: request.url,
           ...(contextData || {}),
@@ -189,38 +233,35 @@ export class SsrRouter {
           __SSR_DATA__: contextData,
         };
 
-        // Add route metadata from @Ssr decorator (only if defined)
-        const opts = ssrRouteMeta?.options;
-        if (opts) {
-          if (opts.title !== undefined) {
-            context.title = opts.title;
-          }
-          if (opts.description !== undefined) {
-            context.description = opts.description;
-          }
-          if (opts.og !== undefined) {
-            context.og = opts.og;
-          }
-          if (opts.twitter !== undefined) {
-            context.twitter = opts.twitter;
-          }
-          if (opts.canonical !== undefined) {
-            context.canonical = opts.canonical;
-          }
-          if (opts.robots !== undefined) {
-            context.robots = opts.robots;
-          }
-          if (opts.head !== undefined) {
-            context.head = opts.head;
-          }
+        // Apply merged route options (controller defaults + @Ssr decorator)
+        if (mergedRouteOptions.title !== undefined) {
+          context.title = mergedRouteOptions.title;
+        }
+        if (mergedRouteOptions.description !== undefined) {
+          context.description = mergedRouteOptions.description;
+        }
+        if (mergedRouteOptions.og !== undefined) {
+          context.og = mergedRouteOptions.og;
+        }
+        if (mergedRouteOptions.twitter !== undefined) {
+          context.twitter = mergedRouteOptions.twitter;
+        }
+        if (mergedRouteOptions.canonical !== undefined) {
+          context.canonical = mergedRouteOptions.canonical;
+        }
+        if (mergedRouteOptions.robots !== undefined) {
+          context.robots = mergedRouteOptions.robots;
+        }
+        if (mergedRouteOptions.head !== undefined) {
+          context.head = mergedRouteOptions.head;
         }
 
         // Render SSR
         const html = await this.ssrService.render(request.url, context);
 
         // Set cache headers if configured
-        if (ssrRouteMeta?.options?.cache) {
-          const { maxAge, staleWhileRevalidate } = ssrRouteMeta.options.cache;
+        if (mergedRouteOptions.cache) {
+          const { maxAge, staleWhileRevalidate } = mergedRouteOptions.cache;
           const cacheControl: string[] = [];
 
           if (maxAge !== undefined) {

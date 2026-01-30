@@ -437,12 +437,17 @@ function TimeDisplay() {
 Define SSR routes with controllers:
 
 ```typescript title="src/controllers/page.controller.ts"
-import { SsrController, Ssr, Get, Param } from '@riktajs/ssr';
+import { SsrController, Ssr, Get, Param, Head } from '@riktajs/ssr';
 
-@SsrController()
+@SsrController({
+  defaults: {
+    og: { siteName: 'My App', type: 'website' },
+    head: [Head.meta('author', 'Your Team')],
+  },
+})
 export class PageController {
   @Get('/')
-  @Ssr({ 
+  @Ssr({
     title: 'Home - My App',
     description: 'Welcome to our application'
   })
@@ -474,6 +479,8 @@ export class PageController {
   }
 }
 ```
+
+The `defaults` option sets common metadata for all routes. Individual `@Ssr()` decorators can override or extend these defaults.
 
 ## Client-Side Navigation Data Fetching
 

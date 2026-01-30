@@ -46,6 +46,48 @@ export class PageController {
 }
 ```
 
+### With Default Options
+
+Use the `defaults` option to set common metadata for all routes in the controller. Individual `@Ssr()` decorators can override or extend these defaults.
+
+```typescript
+@SsrController({
+  defaults: {
+    og: {
+      siteName: 'My App',
+      type: 'website',
+    },
+    twitter: {
+      site: '@mycompany',
+    },
+    head: [
+      Head.meta('author', 'Your Name'),
+    ],
+  },
+})
+export class PageController {
+  @Get('/')
+  @Ssr({
+    title: 'Home',
+    og: { title: 'Welcome Home' }, // Merges with defaults: siteName and type are inherited
+  })
+  home() {
+    return { page: 'home' };
+  }
+
+  @Get('/about')
+  @Ssr({ title: 'About Us' }) // Inherits all og, twitter, and head from defaults
+  about() {
+    return { page: 'about' };
+  }
+}
+```
+
+**Merge behavior:**
+- Simple properties (`title`, `description`, `canonical`, `robots`): route overrides defaults
+- Nested objects (`og`, `twitter`, `cache`): properties are merged (route takes precedence)
+- Arrays (`head`): concatenated (defaults first, then route-specific)
+
 ## @Ssr()
 
 Configures SSR metadata and options for a route handler.
@@ -351,10 +393,36 @@ export function render(url: string, context: Record<string, unknown> = {}) {
 ### @SsrController Options
 
 ```typescript
-@SsrController(prefix?: string)
+@SsrController(options?: string | SsrControllerOptions)
 ```
 
-- `prefix` - Optional route prefix for all routes in the controller
+When passing a string, it's used as the route prefix. When passing an object:
+
+```typescript
+interface SsrControllerOptions {
+  /** Route prefix for all SSR routes in this controller */
+  prefix?: string;
+
+  /** Default SSR route options for all routes in this controller */
+  defaults?: SsrRouteOptions;
+
+  /** SSR configuration options (entryServer, template, etc.) */
+  // ...SsrOptions
+}
+```
+
+**Example with defaults:**
+
+```typescript
+@SsrController({
+  prefix: '/blog',
+  defaults: {
+    og: { siteName: 'My Blog', type: 'article' },
+    twitter: { site: '@myblog', card: 'summary_large_image' },
+    head: [Head.meta('author', 'Blog Author')],
+  },
+})
+```
 
 ### @Ssr Options
 

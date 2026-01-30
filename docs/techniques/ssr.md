@@ -221,7 +221,43 @@ class PageController {
 
 Options:
 - `prefix?: string` - URL prefix for all routes
-- `ssrOptions?: SsrOptions` - Default SSR options for all routes
+- `defaults?: SsrRouteOptions` - Default route options (title, og, twitter, head, etc.) for all routes
+- `ssrOptions?: SsrOptions` - SSR configuration options for all routes
+
+### Controller Defaults
+
+Use the `defaults` option to set common metadata for all routes in a controller:
+
+```typescript
+@SsrController({
+  defaults: {
+    og: { siteName: 'My App', type: 'website' },
+    twitter: { site: '@myapp', card: 'summary_large_image' },
+    head: [Head.meta('author', 'Your Name')],
+  },
+})
+class PageController {
+  @Get('/')
+  @Ssr({ title: 'Home' }) // Inherits og, twitter, head from defaults
+  home() {
+    return { page: 'home' };
+  }
+
+  @Get('/about')
+  @Ssr({
+    title: 'About',
+    og: { title: 'About Us' }, // Merges with defaults (siteName, type inherited)
+  })
+  about() {
+    return { page: 'about' };
+  }
+}
+```
+
+**Merge behavior:**
+- Simple properties (`title`, `description`, `canonical`, `robots`): route overrides defaults
+- Nested objects (`og`, `twitter`, `cache`): properties are deep merged
+- Arrays (`head`): concatenated (defaults first, then route-specific)
 
 ### @Ssr()
 
@@ -409,7 +445,8 @@ Class decorator for SSR controllers.
 
 **Options:**
 - `prefix?: string` - URL prefix for all routes
-- `ssrOptions?: SsrOptions` - Default SSR options
+- `defaults?: SsrRouteOptions` - Default route metadata (title, og, twitter, head, etc.)
+- `ssrOptions?: SsrOptions` - SSR configuration options
 
 ### @Ssr(options?)
 

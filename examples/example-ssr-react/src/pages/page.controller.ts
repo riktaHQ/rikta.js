@@ -7,7 +7,17 @@ import { SsrController, Ssr, Head } from '@riktajs/ssr';
  * All routes in this controller are rendered using SSR.
  * The return value becomes the context passed to the React component.
  */
-@SsrController()
+@SsrController({
+  defaults: {
+    og: {
+      siteName: 'Rikta App',
+      type: 'website',
+    },
+    head: [
+      Head.meta('author', 'Rikta Team'),
+    ],
+  },
+})
 export class PageController {
   /**
    * Home page - the main landing page

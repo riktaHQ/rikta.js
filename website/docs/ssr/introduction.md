@@ -102,17 +102,24 @@ This creates a fully configured SSR application with:
 Use `@SsrController()` to define SSR routes:
 
 ```typescript
-import { SsrController, Ssr, Get } from '@riktajs/ssr';
+import { SsrController, Ssr, Get, Head } from '@riktajs/ssr';
 
-@SsrController()
+@SsrController({
+  defaults: {
+    og: { siteName: 'My App', type: 'website' },
+    head: [Head.meta('author', 'Your Name')],
+  },
+})
 export class PageController {
   @Get('/')
-  @Ssr({ title: 'Home' })
+  @Ssr({ title: 'Home' }) // Inherits og and head from defaults
   home() {
     return { page: 'home' };
   }
 }
 ```
+
+The `defaults` option allows you to set common metadata for all routes, avoiding repetition.
 
 ### SSR Metadata
 

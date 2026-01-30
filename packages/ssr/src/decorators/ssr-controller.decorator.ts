@@ -4,6 +4,7 @@ import {
   SSR_OPTIONS_METADATA,
 } from './constants.js';
 import type { SsrOptions } from '../types.js';
+import type { SsrRouteOptions } from './ssr.decorator.js';
 
 // Import core decorators constants with Symbol.for for cross-package sharing
 const CONTROLLER_METADATA = Symbol.for('rikta:controller:metadata');
@@ -18,6 +19,28 @@ export interface SsrControllerOptions extends Partial<SsrOptions> {
    * @default ''
    */
   prefix?: string;
+
+  /**
+   * Default SSR route options for all routes in this controller.
+   * These values will be merged with individual @Ssr() decorator options,
+   * where the @Ssr() options take precedence.
+   *
+   * @example
+   * ```typescript
+   * @SsrController({
+   *   defaults: {
+   *     og: { siteName: 'My App', type: 'website' },
+   *     head: [Head.meta('author', 'John Doe')],
+   *   }
+   * })
+   * class PageController {
+   *   @Get('/')
+   *   @Ssr({ title: 'Home' }) // Will inherit og and head from defaults
+   *   home() { return {}; }
+   * }
+   * ```
+   */
+  defaults?: SsrRouteOptions;
 }
 
 /**
@@ -26,6 +49,7 @@ export interface SsrControllerOptions extends Partial<SsrOptions> {
 export interface SsrControllerMetadata {
   prefix: string;
   ssrOptions: Partial<SsrOptions>;
+  defaults: SsrRouteOptions;
 }
 
 /**
@@ -71,13 +95,15 @@ export function SsrController(options?: string | SsrControllerOptions): ClassDec
     // Handle both string prefix and options object
     let prefix = '';
     let ssrOptions: Partial<SsrOptions> = {};
+    let defaults: SsrRouteOptions = {};
 
     if (typeof options === 'string') {
       prefix = options;
     } else if (options) {
       prefix = options.prefix ?? '';
-      // Extract SSR options (everything except prefix)
-      const { prefix: _, ...rest } = options;
+      defaults = options.defaults ?? {};
+      // Extract SSR options (everything except prefix and defaults)
+      const { prefix: _, defaults: __, ...rest } = options;
       ssrOptions = rest;
     }
 
@@ -92,6 +118,7 @@ export function SsrController(options?: string | SsrControllerOptions): ClassDec
     const metadata: SsrControllerMetadata = {
       prefix: normalizedPrefix,
       ssrOptions,
+      defaults,
     };
     Reflect.defineMetadata(SSR_CONTROLLER_METADATA, metadata, target);
 

@@ -150,14 +150,21 @@ Your `index.html` should include placeholders for SSR content:
 
 ### Decorators
 
-#### `@SsrController(prefix?: string)`
+#### `@SsrController(options?)`
 
-Marks a class as an SSR controller with optional route prefix.
+Marks a class as an SSR controller with optional route prefix and default options.
 
 ```typescript
-import { SsrController, Ssr, Get } from '@riktajs/ssr';
+import { SsrController, Ssr, Get, Head } from '@riktajs/ssr';
 
-@SsrController('/pages')
+@SsrController({
+  prefix: '/pages',
+  defaults: {
+    og: { siteName: 'My Site', type: 'website' },
+    twitter: { site: '@mysite' },
+    head: [Head.meta('author', 'Your Name')],
+  },
+})
 export class PageController {
   @Get('/')
   @Ssr({ title: 'Home Page', description: 'Welcome to our site' })
@@ -166,6 +173,11 @@ export class PageController {
   }
 }
 ```
+
+The `defaults` option allows setting common metadata for all routes in the controller. Individual `@Ssr()` decorators can override or extend these defaults:
+- Simple properties: route overrides defaults
+- Nested objects (`og`, `twitter`, `cache`): merged (route takes precedence)
+- Arrays (`head`): concatenated
 
 #### `@Ssr(options)`
 

@@ -6,11 +6,25 @@ import { SsrController, Ssr, Head } from '@riktajs/ssr';
  *
  * Use @SsrController() to mark a class as an SSR controller.
  * The return value of each method becomes the context passed to React.
+ *
+ * The `defaults` option allows you to set common metadata for all routes
+ * in this controller, which can be overridden by individual @Ssr() decorators.
  */
-@SsrController()
+@SsrController({
+  defaults: {
+    og: {
+      siteName: 'Rikta App',
+      type: 'website',
+    },
+    head: [
+      Head.meta('author', 'Your Name'),
+    ],
+  },
+})
 export class PageController {
   /**
    * Home page
+   * Inherits og.siteName, og.type, and head from controller defaults
    */
   @Get('/')
   @Ssr({
@@ -19,11 +33,7 @@ export class PageController {
     og: {
       title: 'Welcome to Rikta',
       description: 'Build fullstack TypeScript apps with ease',
-      type: 'website',
     },
-    head: [
-      Head.meta('author', 'Your Name'),
-    ],
   })
   home() {
     return {
@@ -35,6 +45,7 @@ export class PageController {
 
   /**
    * Item detail page - Dynamic route with parameter
+   * Inherits og and head from controller defaults
    */
   @Get('/item/:id')
   @Ssr({

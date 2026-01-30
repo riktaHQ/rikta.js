@@ -82,6 +82,29 @@ describe('SSR Decorators', () => {
       });
     });
 
+    it('should accept defaults for route options', () => {
+      @SsrController({
+        defaults: {
+          og: { siteName: 'My App', type: 'website' },
+          head: [{ tag: 'meta', attrs: { name: 'author', content: 'John' } }],
+        },
+      })
+      class TestController {}
+
+      const metadata = getSsrControllerMetadata(TestController);
+      expect(metadata?.defaults).toBeDefined();
+      expect(metadata?.defaults.og).toEqual({ siteName: 'My App', type: 'website' });
+      expect(metadata?.defaults.head).toHaveLength(1);
+    });
+
+    it('should have empty defaults when not specified', () => {
+      @SsrController()
+      class TestController {}
+
+      const metadata = getSsrControllerMetadata(TestController);
+      expect(metadata?.defaults).toEqual({});
+    });
+
     it('should also register as regular controller', () => {
       @SsrController('/test')
       class TestController {}
