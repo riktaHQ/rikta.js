@@ -1,5 +1,5 @@
 import React from 'react';
-import { useSsrData, Link } from '@riktajs/react';
+import { useSsrData } from '@riktajs/react';
 import { styles } from '../components/styles.js';
 
 interface UserPageData {
@@ -20,7 +20,7 @@ export function UserPage() {
         <p style={{ color: '#888' }}>
           The user you're looking for doesn't exist.
         </p>
-        <Link href="/user/1" style={styles.link}>Try User #1</Link>
+        <a href="/user/1" style={styles.link}>Try User #1</a>
       </div>
     );
   }
@@ -37,7 +37,7 @@ export function UserPage() {
         <p style={{ color: '#666', fontSize: '0.9rem' }}>Try other users:</p>
         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
           {['1', '2', '3'].map((id) => (
-            <Link
+            <a
               key={id}
               href={`/user/${id}`}
               style={{
@@ -46,7 +46,7 @@ export function UserPage() {
               }}
             >
               User {id}
-            </Link>
+            </a>
           ))}
         </div>
       </div>

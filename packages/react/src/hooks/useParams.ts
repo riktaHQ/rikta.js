@@ -1,11 +1,10 @@
-import { useContext } from 'react';
-import { RouterContext } from '../context/RouterContext.js';
+import { getSsrData } from '../utils/getSsrData.js';
 
 /**
- * Hook to access route parameters
+ * Hook to access route parameters from SSR data
  * 
  * Route parameters are extracted from the URL path by the server
- * and passed via SSR data. They're stored in the RouterContext.
+ * and passed via SSR data. This hook reads them from the SSR data.
  * 
  * @returns Object with route parameter values
  * 
@@ -32,6 +31,10 @@ import { RouterContext } from '../context/RouterContext.js';
  * ```
  */
 export function useParams<T extends Record<string, string> = Record<string, string>>(): T {
-  const context = useContext(RouterContext);
-  return context.params as T;
+  const ssrData = getSsrData();
+  
+  // Extract params from SSR data meta
+  const params = (ssrData?.meta?.params as T) ?? ({} as T);
+  
+  return params;
 }

@@ -1,6 +1,13 @@
 # @riktajs/react
 
-React utilities for Rikta SSR framework. Provides hooks and components for routing, navigation, SSR data access, and server interactions.
+React utilities for Rikta SSR framework. Provides hooks for SSR data access, navigation, and server interactions using **native browser APIs**.
+
+## Philosophy
+
+This package embraces the web platform by using native browser APIs for navigation:
+- Use standard `<a href="...">` tags for links
+- Use `useNavigate()` for programmatic navigation (uses `window.location` under the hood)
+- Full page loads ensure SSR data is always fresh
 
 ## Installation
 
@@ -30,37 +37,56 @@ hydrateRoot(
 );
 ```
 
-## Components
+## Navigation
 
-### `<Link>`
+### Using Native Links
 
-Client-side navigation link component that uses the History API instead of full page reloads.
+Use standard HTML anchor tags for navigation:
 
 ```tsx
-import { Link } from '@riktajs/react';
-
 function Navigation() {
   return (
     <nav>
-      <Link href="/">Home</Link>
-      <Link href="/about">About</Link>
-      <Link href="/items/123">Item 123</Link>
-      
-      {/* With options */}
-      <Link href="/dashboard" replace scroll={false}>
-        Dashboard
-      </Link>
+      <a href="/">Home</a>
+      <a href="/about">About</a>
+      <a href="/items/123">Item 123</a>
     </nav>
   );
 }
 ```
 
-**Props:**
-- `href` (required): Target URL
-- `replace`: Replace history entry instead of push
-- `scroll`: Scroll to top after navigation (default: `true`)
-- `state`: Additional state to pass to navigation
-- All standard `<a>` props are supported
+### Programmatic Navigation with `useNavigate()`
+
+For programmatic navigation, use the `useNavigate()` hook:
+
+```tsx
+import { useNavigate } from '@riktajs/react';
+
+function MyComponent() {
+  const navigate = useNavigate();
+
+  const handleSubmit = async () => {
+    await saveData();
+    // Simple navigation
+    navigate('/success');
+  };
+
+  const handleSearch = (query: string) => {
+    // Navigation with query params - easy!
+    navigate('/search', { q: query, page: 1 });
+    // Results in: /search?q=query&page=1
+  };
+
+  const handleLogin = () => {
+    // Replace history entry (for redirects)
+    navigate('/dashboard', { replace: true });
+  };
+
+  return <button onClick={handleSubmit}>Submit</button>;
+}
+```
+
+## Components
 
 ### `<RiktaProvider>`
 
@@ -80,27 +106,28 @@ function App() {
 
 ## Hooks
 
-### `useNavigation()`
+### `useNavigate()`
 
-Programmatic navigation hook.
+Programmatic navigation hook using native browser APIs.
 
 ```tsx
-import { useNavigation } from '@riktajs/react';
+import { useNavigate } from '@riktajs/react';
 
 function MyComponent() {
-  const { navigate, pathname } = useNavigation();
+  const navigate = useNavigate();
 
-  const handleSubmit = async () => {
-    await saveData();
-    navigate('/success');
-  };
+  // Simple navigation
+  navigate('/dashboard');
 
-  // With options
+  // With query params
+  navigate('/search', { q: 'hello', page: 1 });
+  // Results in: /search?q=hello&page=1
+
+  // Replace history (no back button)
   navigate('/login', { replace: true });
-  navigate('/next', { scroll: false });
-  navigate('/edit', { state: { from: 'list' } });
 
-  return <button onClick={handleSubmit}>Submit</button>;
+  // Params + options
+  navigate('/items', { filter: 'active' }, { replace: true });
 }
 ```
 
@@ -139,7 +166,7 @@ function SearchPage() {
   const page = parseInt(searchParams.get('page') ?? '1', 10);
 
   const handleSearch = (newQuery: string) => {
-    setSearchParams({ q: newQuery, page: '1' });
+    setSearchParams({ q: newQuery, page: 1 });
   };
 
   return (
@@ -153,7 +180,7 @@ function SearchPage() {
 
 ### `useLocation()`
 
-Get current location information.
+Access current location information directly from `window.location`.
 
 ```tsx
 import { useLocation } from '@riktajs/react';
@@ -172,34 +199,28 @@ function Breadcrumbs() {
 
 ### `useSsrData()`
 
-Access SSR data passed from server via `window.__SSR_DATA__`. The data structure includes:
-- `data`: The actual page data from the controller
-- `url`: The current URL
-- `title`: Page title (from `@Ssr` decorator)
-- `description`: Page description (from `@Ssr` decorator)
+Access SSR data passed from the server via `window.__SSR_DATA__`.
 
 ```tsx
 import { useSsrData } from '@riktajs/react';
 
 interface PageData {
-  page: string;
+  title: string;
   items: Array<{ id: string; name: string }>;
 }
 
 function ItemList() {
   const ssrData = useSsrData<PageData>();
   
-  if (!ssrData) return <div>Loading...</div>;
-  
-  // Access page data
-  const { data, title, url } = ssrData;
+  if (!ssrData) {
+    return <div>Loading...</div>;
+  }
   
   return (
     <div>
-      <h1>{title ?? data.page}</h1>
-      <p>Current URL: {url}</p>
+      <h1>{ssrData.data.title}</h1>
       <ul>
-        {data.items.map(item => (
+        {ssrData.data.items.map(item => (
           <li key={item.id}>{item.name}</li>
         ))}
       </ul>
@@ -208,34 +229,9 @@ function ItemList() {
 }
 ```
 
-### Client-Side Navigation with SSR Data Fetching
-
-When navigating client-side using `<Link>` or `navigate()`, `RiktaProvider` automatically fetches the SSR data for the new page from the server. This ensures:
-
-1. **No page flash**: Data is fetched before the route changes
-2. **Consistent data structure**: Same data shape as initial SSR
-3. **SEO metadata**: Title and description are updated automatically
-
-```tsx
-// App.tsx - Route based on ssrData.url for data consistency
-function App() {
-  const ssrData = useSsrData<{ page: string }>();
-  
-  // Use ssrData.url for routing to ensure data and route are in sync
-  const pathname = ssrData?.url?.split('?')[0] ?? '/';
-  
-  return (
-    <Layout title={ssrData?.title}>
-      {pathname === '/about' && <AboutPage />}
-      {pathname === '/' && <HomePage />}
-    </Layout>
-  );
-}
-```
-
 ### `useHydration()`
 
-Track hydration state for client-only rendering.
+Track hydration state for handling SSR vs client rendering differences.
 
 ```tsx
 import { useHydration } from '@riktajs/react';
@@ -243,20 +239,13 @@ import { useHydration } from '@riktajs/react';
 function TimeDisplay() {
   const { isHydrated, isServer } = useHydration();
   
-  // Avoid hydration mismatch with dynamic content
+  // On server and initial render, show static content
   if (!isHydrated) {
     return <span>Loading time...</span>;
   }
   
+  // After hydration, show dynamic content
   return <span>{new Date().toLocaleTimeString()}</span>;
-}
-
-function ClientOnlyComponent() {
-  const { isHydrated } = useHydration();
-  
-  if (!isHydrated) return null;
-  
-  return <SomeClientOnlyLibrary />;
 }
 ```
 
@@ -266,11 +255,6 @@ Data fetching hook with loading and error states.
 
 ```tsx
 import { useFetch } from '@riktajs/react';
-
-interface User {
-  id: string;
-  name: string;
-}
 
 function UserProfile({ userId }: { userId: string }) {
   const { data, loading, error, refetch } = useFetch<User>(
@@ -288,40 +272,20 @@ function UserProfile({ userId }: { userId: string }) {
     </div>
   );
 }
-
-// With options
-const { data } = useFetch<Item[]>('/api/items', {
-  headers: { 'Authorization': `Bearer ${token}` },
-  deps: [token],    // Refetch when token changes
-  skip: !token,     // Don't fetch until we have a token
-  transform: (res) => res.results, // Transform response
-});
 ```
 
 ### `useAction()`
 
-Execute server actions (form submissions, mutations).
+Execute server actions (mutations, form submissions).
 
 ```tsx
 import { useAction } from '@riktajs/react';
-
-interface CreateItemInput {
-  name: string;
-  price: number;
-}
-
-interface Item {
-  id: string;
-  name: string;
-  price: number;
-}
 
 function CreateItemForm() {
   const { execute, pending, result } = useAction<CreateItemInput, Item>(
     '/api/items',
     {
       onSuccess: (item) => console.log('Created:', item),
-      onError: (error) => console.error('Failed:', error),
     }
   );
 
@@ -345,54 +309,64 @@ function CreateItemForm() {
     </form>
   );
 }
-
-// DELETE action
-const { execute, pending } = useAction<{ id: string }, void>(
-  '/api/items',
-  { method: 'DELETE' }
-);
 ```
 
-## TypeScript
+## TypeScript Support
 
-All exports are fully typed. Import types as needed:
+All hooks and components are fully typed. Export types are available:
 
 ```tsx
 import type {
   SsrData,
-  RouterContextValue,
-  NavigateOptions,
   ActionResult,
   FetchState,
   ActionState,
-  LinkProps,
+  RiktaProviderProps,
   HydrationState,
   Location,
+  NavigateFn,
+  NavigateOptions,
 } from '@riktajs/react';
 ```
 
-## Integration with @riktajs/ssr
+## Migration from Previous Versions
 
-This package is designed to work seamlessly with `@riktajs/ssr`. The SSR plugin automatically injects `window.__SSR_DATA__` which `RiktaProvider` picks up.
+If you were using the `<Link>` component or `useNavigation()`:
 
+### Before (v1.x)
 ```tsx
-// Server: page.controller.ts
-@Controller()
-export class PageController {
-  @Get('/item/:id')
-  @Render()
-  getItem(@Param('id') id: string) {
-    const item = getItemById(id);
-    return { item, params: { id } };
-  }
-}
+import { Link, useNavigation } from '@riktajs/react';
 
-// Client: ItemPage.tsx
-function ItemPage() {
-  const ssrData = useSsrData<{ item: Item; params: { id: string } }>();
-  const { id } = useParams();
+function Nav() {
+  const { navigate, pathname } = useNavigation();
   
-  return <h1>{ssrData?.data.item.name} (ID: {id})</h1>;
+  return (
+    <nav>
+      <Link href="/about">About</Link>
+      <button onClick={() => navigate('/search', { state: { from: 'nav' } })}>
+        Search
+      </button>
+    </nav>
+  );
+}
+```
+
+### After (v2.x)
+```tsx
+import { useNavigate, useLocation } from '@riktajs/react';
+
+function Nav() {
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  
+  return (
+    <nav>
+      <a href="/about">About</a>
+      <button onClick={() => navigate('/search', { q: '' })}>
+        Search
+      </button>
+    </nav>
+  );
 }
 ```
 

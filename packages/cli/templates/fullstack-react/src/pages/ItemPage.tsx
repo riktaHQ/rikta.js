@@ -1,5 +1,5 @@
 import React from 'react';
-import { useSsrData, Link } from '@riktajs/react';
+import { useSsrData } from '@riktajs/react';
 import { styles } from '../components/styles.js';
 
 interface ItemData {
@@ -28,7 +28,7 @@ export function ItemPage() {
         <p style={{ color: '#888', marginBottom: '1.5rem' }}>
           The item you're looking for doesn't exist.
         </p>
-        <Link href="/item/1" style={styles.link}>← Back to Item #1</Link>
+        <a href="/item/1" style={styles.link}>← Back to Item #1</a>
       </div>
     );
   }
@@ -73,11 +73,11 @@ export function ItemPage() {
       <div style={styles.card}>
         <h3 style={{ ...styles.cardTitle, fontSize: '1.2rem' }}>Browse Other Items</h3>
         <p style={{ color: '#888', marginBottom: '1rem' }}>
-          Using <code>&lt;Link&gt;</code> for client-side navigation:
+          Using native <code>&lt;a&gt;</code> tags for navigation:
         </p>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           {availableItems.map((id) => (
-            <Link
+            <a
               key={id}
               href={`/item/${id}`}
               style={{
@@ -93,11 +93,11 @@ export function ItemPage() {
               }}
             >
               Item #{id}
-            </Link>
+            </a>
           ))}
         </div>
         <div style={{ marginTop: '1rem' }}>
-          <Link href="/" style={styles.link}>← Back to Home</Link>
+          <a href="/" style={styles.link}>← Back to Home</a>
         </div>
       </div>
 

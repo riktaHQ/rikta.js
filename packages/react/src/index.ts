@@ -1,25 +1,18 @@
 // Types
 export type {
   SsrData,
-  RouterContextValue,
-  NavigateOptions,
   ActionResult,
   FetchState,
   ActionState,
-  LinkProps,
-  RiktaProviderProps,
   HydrationState,
 } from './types.js';
 
-// Context (for advanced use cases)
-export { RouterContext, SsrContext } from './context/index.js';
-
-// Components
-export { RiktaProvider, Link } from './components/index.js';
+// Utils
+export { getSsrData, clearSsrDataCache, setSsrData } from './utils/index.js';
 
 // Hooks
 export {
-  useNavigation,
+  useNavigate,
   useParams,
   useSearchParams,
   useLocation,
@@ -28,6 +21,8 @@ export {
   useFetch,
   useAction,
   type Location,
+  type NavigateFn,
+  type NavigateOptions,
   type UseFetchOptions,
   type UseActionOptions,
 } from './hooks/index.js';

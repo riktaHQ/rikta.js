@@ -1,20 +1,28 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { RiktaProvider } from '../src/components/RiktaProvider';
-import { Link } from '../src/components/Link';
-import { useNavigation } from '../src/hooks/useNavigation';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import { useNavigate } from '../src/hooks/useNavigate';
 import { useParams } from '../src/hooks/useParams';
 import { useLocation } from '../src/hooks/useLocation';
 import { useSsrData } from '../src/hooks/useSsrData';
 import { useHydration } from '../src/hooks/useHydration';
+import { useSearchParams } from '../src/hooks/useSearchParams';
+import { getSsrData, setSsrData, clearSsrDataCache } from '../src/utils/getSsrData';
 import type { SsrData } from '../src/types';
 
-// Helper component to test hooks
-function TestNavigationHook() {
-  const { pathname } = useNavigation();
+// Helper component to test useNavigate hook
+function TestNavigateHook() {
+  const navigate = useNavigate();
   return (
     <div>
-      <span data-testid="pathname">{pathname}</span>
+      <button data-testid="navigate-btn" onClick={() => navigate('/test')}>
+        Navigate
+      </button>
+      <button data-testid="navigate-params-btn" onClick={() => navigate('/search', { q: 'hello', page: 1 })}>
+        Navigate with params
+      </button>
+      <button data-testid="navigate-replace-btn" onClick={() => navigate('/login', { replace: true })}>
+        Navigate replace
+      </button>
     </div>
   );
 }
@@ -34,6 +42,8 @@ function TestLocationHook() {
   return (
     <div>
       <span data-testid="pathname">{location.pathname}</span>
+      <span data-testid="search">{location.search}</span>
+      <span data-testid="href">{location.href}</span>
     </div>
   );
 }
@@ -60,212 +70,206 @@ function TestHydrationHook() {
   );
 }
 
-describe('RiktaProvider', () => {
+function TestSearchParamsHook() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  return (
+    <div>
+      <span data-testid="q">{searchParams.get('q') ?? 'none'}</span>
+      <button data-testid="set-params-btn" onClick={() => setSearchParams({ q: 'test', page: 1 })}>
+        Set Params
+      </button>
+    </div>
+  );
+}
+
+describe('getSsrData utility', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    clearSsrDataCache();
   });
 
-  it('renders children', () => {
-    render(
-      <RiktaProvider>
-        <div data-testid="child">Hello</div>
-      </RiktaProvider>
-    );
-    expect(screen.getByTestId('child')).toHaveTextContent('Hello');
+  afterEach(() => {
+    clearSsrDataCache();
   });
 
-  it('provides SSR data from props', () => {
+  it('returns null when no SSR data', () => {
+    expect(getSsrData()).toBeNull();
+  });
+
+  it('returns SSR data when set via setSsrData', () => {
     const ssrData: SsrData<{ message: string }> = {
-      data: { message: 'Hello from SSR' },
+      data: { message: 'Hello' },
       url: '/test',
     };
-
-    render(
-      <RiktaProvider ssrData={ssrData}>
-        <TestSsrDataHook />
-      </RiktaProvider>
-    );
-
-    expect(screen.getByTestId('message')).toHaveTextContent('Hello from SSR');
-    expect(screen.getByTestId('url')).toHaveTextContent('/test');
-  });
-
-  it('provides initial params', () => {
-    render(
-      <RiktaProvider initialParams={{ id: '123', slug: 'test-item' }}>
-        <TestParamsHook />
-      </RiktaProvider>
-    );
-
-    expect(screen.getByTestId('id')).toHaveTextContent('123');
-    expect(screen.getByTestId('slug')).toHaveTextContent('test-item');
-  });
-});
-
-describe('Link', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('renders an anchor element', () => {
-    render(
-      <RiktaProvider>
-        <Link href="/about">About</Link>
-      </RiktaProvider>
-    );
-
-    const link = screen.getByText('About');
-    expect(link.tagName).toBe('A');
-    expect(link).toHaveAttribute('href', '/about');
-  });
-
-  it('passes through additional props', () => {
-    render(
-      <RiktaProvider>
-        <Link href="/about" className="nav-link" data-testid="about-link">
-          About
-        </Link>
-      </RiktaProvider>
-    );
-
-    const link = screen.getByTestId('about-link');
-    expect(link).toHaveClass('nav-link');
-  });
-
-  it('calls custom onClick handler', () => {
-    const handleClick = vi.fn();
+    setSsrData(ssrData);
     
-    render(
-      <RiktaProvider>
-        <Link href="/about" onClick={handleClick}>About</Link>
-      </RiktaProvider>
-    );
+    const result = getSsrData<{ message: string }>();
+    expect(result?.data.message).toBe('Hello');
+    expect(result?.url).toBe('/test');
+  });
 
-    fireEvent.click(screen.getByText('About'));
-    expect(handleClick).toHaveBeenCalled();
+  it('caches SSR data after first read', () => {
+    const ssrData: SsrData = { data: { test: true }, url: '/' };
+    setSsrData(ssrData);
+    
+    const result1 = getSsrData();
+    const result2 = getSsrData();
+    
+    expect(result1).toBe(result2);
+  });
+
+  it('clearSsrDataCache clears the cache', () => {
+    setSsrData({ data: { test: true }, url: '/' });
+    expect(getSsrData()).not.toBeNull();
+    
+    clearSsrDataCache();
+    expect(getSsrData()).toBeNull();
   });
 });
 
-describe('useNavigation', () => {
-  it('returns current pathname', () => {
-    render(
-      <RiktaProvider>
-        <TestNavigationHook />
-      </RiktaProvider>
-    );
+describe('useNavigate', () => {
+  let mockLocationHref: string;
+  let mockLocationReplace: ReturnType<typeof vi.fn>;
 
-    expect(screen.getByTestId('pathname')).toBeInTheDocument();
+  beforeEach(() => {
+    mockLocationHref = '/';
+    mockLocationReplace = vi.fn();
+    
+    // Mock window.location
+    Object.defineProperty(window, 'location', {
+      value: {
+        get href() { return mockLocationHref; },
+        set href(value: string) { mockLocationHref = value; },
+        origin: 'http://localhost',
+        pathname: '/',
+        search: '',
+        replace: mockLocationReplace,
+      },
+      writable: true,
+    });
+  });
+
+  it('returns a navigate function', () => {
+    render(<TestNavigateHook />);
+    expect(screen.getByTestId('navigate-btn')).toBeInTheDocument();
   });
 });
 
 describe('useParams', () => {
-  it('returns empty params when none provided', () => {
-    render(
-      <RiktaProvider>
-        <TestParamsHook />
-      </RiktaProvider>
-    );
+  beforeEach(() => {
+    clearSsrDataCache();
+  });
+
+  afterEach(() => {
+    clearSsrDataCache();
+  });
+
+  it('returns empty params when no SSR data', () => {
+    render(<TestParamsHook />);
 
     expect(screen.getByTestId('id')).toHaveTextContent('');
     expect(screen.getByTestId('slug')).toHaveTextContent('none');
   });
 
-  it('returns provided params', () => {
-    render(
-      <RiktaProvider initialParams={{ id: '456' }}>
-        <TestParamsHook />
-      </RiktaProvider>
-    );
+  it('returns params from SSR data meta', () => {
+    setSsrData({
+      data: { page: 'item' },
+      url: '/item/456',
+      meta: {
+        params: { id: '456', slug: 'test-item' },
+      },
+    });
+
+    render(<TestParamsHook />);
 
     expect(screen.getByTestId('id')).toHaveTextContent('456');
+    expect(screen.getByTestId('slug')).toHaveTextContent('test-item');
   });
 });
 
 describe('useLocation', () => {
-  it('returns location information', () => {
-    render(
-      <RiktaProvider>
-        <TestLocationHook />
-      </RiktaProvider>
-    );
+  beforeEach(() => {
+    Object.defineProperty(window, 'location', {
+      value: {
+        href: 'http://localhost/test?foo=bar',
+        origin: 'http://localhost',
+        pathname: '/test',
+        search: '?foo=bar',
+      },
+      writable: true,
+    });
+  });
 
-    expect(screen.getByTestId('pathname')).toBeInTheDocument();
+  it('returns location information from window.location', () => {
+    render(<TestLocationHook />);
+
+    expect(screen.getByTestId('pathname')).toHaveTextContent('/test');
+    expect(screen.getByTestId('search')).toHaveTextContent('foo=bar');
   });
 });
 
 describe('useSsrData', () => {
-  it('returns null when no SSR data is provided', () => {
-    render(
-      <RiktaProvider>
-        <TestSsrDataHook />
-      </RiktaProvider>
-    );
+  beforeEach(() => {
+    clearSsrDataCache();
+  });
 
+  afterEach(() => {
+    clearSsrDataCache();
+  });
+
+  it('returns null when no SSR data', () => {
+    render(<TestSsrDataHook />);
     expect(screen.getByTestId('message')).toHaveTextContent('no data');
   });
 
-  it('returns SSR data when provided', () => {
-    const ssrData: SsrData<{ message: string }> = {
+  it('returns SSR data when set', () => {
+    setSsrData({
       data: { message: 'Server rendered' },
       url: '/ssr-page',
-    };
+    });
 
-    render(
-      <RiktaProvider ssrData={ssrData}>
-        <TestSsrDataHook />
-      </RiktaProvider>
-    );
+    render(<TestSsrDataHook />);
 
     expect(screen.getByTestId('message')).toHaveTextContent('Server rendered');
     expect(screen.getByTestId('url')).toHaveTextContent('/ssr-page');
   });
 
   it('returns title and description when provided', () => {
-    const ssrData: SsrData<{ message: string }> = {
+    setSsrData({
       data: { message: 'Page content' },
       url: '/page',
       title: 'Page Title',
       description: 'Page description for SEO',
-    };
+    });
 
-    render(
-      <RiktaProvider ssrData={ssrData}>
-        <TestSsrDataHook />
-      </RiktaProvider>
-    );
+    render(<TestSsrDataHook />);
 
     expect(screen.getByTestId('title')).toHaveTextContent('Page Title');
     expect(screen.getByTestId('description')).toHaveTextContent('Page description for SEO');
-  });
-
-  it('initializes location from ssrData.url during SSR', () => {
-    // Note: In jsdom, window is always available, so this test
-    // verifies that ssrData.url is correctly passed and accessible.
-    // The actual SSR behavior (no window) works correctly in real SSR.
-    const ssrData: SsrData<{ page: string }> = {
-      data: { page: 'about' },
-      url: '/about',
-    };
-
-    render(
-      <RiktaProvider ssrData={ssrData}>
-        <TestSsrDataHook />
-      </RiktaProvider>
-    );
-
-    // Verify ssrData.url is correctly available
-    expect(screen.getByTestId('url')).toHaveTextContent('/about');
   });
 });
 
 describe('useHydration', () => {
   it('reports not server in browser environment', () => {
-    render(
-      <RiktaProvider>
-        <TestHydrationHook />
-      </RiktaProvider>
-    );
-
+    render(<TestHydrationHook />);
     expect(screen.getByTestId('server')).toHaveTextContent('no');
+  });
+});
+
+describe('useSearchParams', () => {
+  beforeEach(() => {
+    Object.defineProperty(window, 'location', {
+      value: {
+        href: 'http://localhost/search?q=hello&page=2',
+        origin: 'http://localhost',
+        pathname: '/search',
+        search: '?q=hello&page=2',
+      },
+      writable: true,
+    });
+  });
+
+  it('returns current search params', () => {
+    render(<TestSearchParamsHook />);
+    expect(screen.getByTestId('q')).toHaveTextContent('hello');
   });
 });

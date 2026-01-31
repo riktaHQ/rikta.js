@@ -1,5 +1,5 @@
 import React from 'react';
-import { useSsrData, useSearchParams, useNavigation } from '@riktajs/react';
+import { useSsrData, useSearchParams, useNavigate } from '@riktajs/react';
 import { styles } from '../components/styles.js';
 
 interface SearchPageData {
@@ -12,7 +12,7 @@ interface SearchPageData {
 export function SearchPage() {
   const ssrData = useSsrData<SearchPageData>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { navigate } = useNavigation();
+  const navigate = useNavigate();
   
   const query = ssrData?.data?.query || '';
   const results = ssrData?.data?.results || [];

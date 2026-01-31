@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useSsrData, useFetch, Link } from '@riktajs/react';
+import { useSsrData, useFetch } from '@riktajs/react';
 import { styles } from '../components/styles.js';
 
 interface HomePageData {
@@ -31,7 +31,7 @@ export function HomePage() {
         <h2 style={styles.cardTitle}>🎉 @riktajs/react Integration</h2>
         <p style={{ color: '#888', marginBottom: '1rem' }}>
           This page uses <code>useSsrData()</code> hook to access server data.
-          Navigation uses <code>&lt;Link&gt;</code> component for client-side routing!
+          Navigation uses native <code>&lt;a&gt;</code> tags for SSR routing!
         </p>
         <pre style={{ 
           background: 'rgba(0, 0, 0, 0.3)', 
@@ -41,11 +41,11 @@ export function HomePage() {
           color: '#00ff88',
           fontSize: '0.85rem',
         }}>
-{`import { useSsrData, Link } from '@riktajs/react';
+{`import { useSsrData, useNavigate } from '@riktajs/react';
 
 function HomePage() {
   const ssrData = useSsrData<PageData>();
-  return <Link href="/about">About</Link>;
+  return <a href="/about">About</a>;
 }`}
         </pre>
       </div>

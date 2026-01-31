@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useSsrData, useFetch, Link } from '@riktajs/react';
+import { useSsrData, useFetch } from '@riktajs/react';
 import { styles } from '../components/styles.js';
 
 interface HomePageData {
@@ -30,7 +30,7 @@ export function HomePage() {
         <h2 style={styles.cardTitle}>🎉 @riktajs/react Integration</h2>
         <p style={{ color: '#888', marginBottom: '1rem' }}>
           This page uses <code>useSsrData()</code> hook to access server data.
-          Navigation uses <code>&lt;Link&gt;</code> component for client-side routing!
+          Navigation uses native <code>&lt;a&gt;</code> tags for SSR routing!
         </p>
         <pre style={{ 
           background: 'rgba(0, 0, 0, 0.3)', 
@@ -40,12 +40,14 @@ export function HomePage() {
           color: '#00ff88',
           fontSize: '0.85rem',
         }}>
-{`import { useSsrData, Link, useFetch } from '@riktajs/react';
+{`import { useSsrData, useFetch, useNavigate } from '@riktajs/react';
 
 function HomePage() {
   const ssrData = useSsrData<PageData>();
   const { data, refetch } = useFetch('/api/hello');
-  return <Link href="/item/1">View Item</Link>;
+  const navigate = useNavigate();
+  // Use native <a> tags or navigate() for programmatic navigation
+  return <a href="/item/1">View Item</a>;
 }`}
         </pre>
       </div>
@@ -98,20 +100,20 @@ function HomePage() {
       </div>
 
       <div style={styles.card}>
-        <h2 style={styles.cardTitle}>🔗 Dynamic Routes with Link</h2>
+        <h2 style={styles.cardTitle}>🔗 Dynamic Routes</h2>
         <p style={{ color: '#888', marginBottom: '1rem' }}>
-          Using <code>&lt;Link&gt;</code> component for client-side navigation:
+          Using native <code>&lt;a&gt;</code> tags for navigation:
         </p>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <Link href="/item/1" style={{ ...styles.button, textDecoration: 'none', display: 'inline-block' }}>
+          <a href="/item/1" style={{ ...styles.button, textDecoration: 'none', display: 'inline-block' }}>
             View Item #1
-          </Link>
-          <Link href="/item/2" style={{ ...styles.button, textDecoration: 'none', display: 'inline-block' }}>
+          </a>
+          <a href="/item/2" style={{ ...styles.button, textDecoration: 'none', display: 'inline-block' }}>
             View Item #2
-          </Link>
-          <Link href="/item/3" style={{ ...styles.button, textDecoration: 'none', display: 'inline-block' }}>
+          </a>
+          <a href="/item/3" style={{ ...styles.button, textDecoration: 'none', display: 'inline-block' }}>
             View Item #3
-          </Link>
+          </a>
         </div>
       </div>
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useSsrData, Link } from '@riktajs/react';
+import { useSsrData } from '@riktajs/react';
 import { styles } from '../components/styles.js';
 
 interface AboutPageData {

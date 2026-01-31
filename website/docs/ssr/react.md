@@ -6,7 +6,13 @@ description: Build server-rendered React applications with @riktajs/react
 
 # React SSR Integration
 
-The `@riktajs/react` package provides React-specific hooks and components for building SSR applications with Rikta. It handles routing, data fetching, hydration, and client-side navigation.
+The `@riktajs/react` package provides React-specific hooks and utilities for building SSR applications with Rikta. It embraces the web platform by using **native browser APIs** for navigation and **no Provider wrapper** needed.
+
+## Philosophy
+
+- **No Provider needed** - Access SSR data directly via `getSsrData()`
+- **Native navigation** - Use `<a href="...">` tags and `useNavigate()` (uses `window.location`)
+- **Full page loads** - SSR data is always fresh, no complex state management
 
 ## Installation
 
@@ -42,12 +48,11 @@ export default defineConfig({
 ```tsx title="src/entry-server.tsx"
 import React from 'react';
 import { renderToString } from 'react-dom/server';
-import { RiktaProvider, type SsrData } from '@riktajs/react';
+import { setSsrData, type SsrData } from '@riktajs/react';
 import { App } from './App';
 import { HeadBuilder } from '@riktajs/ssr';
 
 export function render(url: string, context: Record<string, unknown> = {}) {
-  // Extract metadata from context
   const { title: contextTitle, description: contextDescription, __SSR_DATA__, ...restContext } = context;
   
   // Create SSR data structure
@@ -58,12 +63,11 @@ export function render(url: string, context: Record<string, unknown> = {}) {
     description: contextDescription as string | undefined,
   };
 
-  // Render React app
-  const html = renderToString(
-    <RiktaProvider ssrData={ssrData}>
-      <App />
-    </RiktaProvider>
-  );
+  // Set SSR data for server-side rendering
+  setSsrData(ssrData);
+
+  // Render React app - no provider needed!
+  const html = renderToString(<App />);
 
   // Build head tags
   const head = new HeadBuilder();
@@ -89,18 +93,13 @@ export function render(url: string, context: Record<string, unknown> = {}) {
 ```tsx title="src/entry-client.tsx"
 import React from 'react';
 import { hydrateRoot } from 'react-dom/client';
-import { RiktaProvider } from '@riktajs/react';
 import { App } from './App';
 
+// No provider needed! SSR data is read directly from window.__SSR_DATA__
 const container = document.getElementById('app');
 
 if (container) {
-  hydrateRoot(
-    container,
-    <RiktaProvider>
-      <App />
-    </RiktaProvider>
-  );
+  hydrateRoot(container, <App />);
 }
 ```
 
@@ -108,7 +107,7 @@ if (container) {
 
 ```tsx title="src/App.tsx"
 import React from 'react';
-import { useSsrData, useLocation } from '@riktajs/react';
+import { getSsrData, useLocation } from '@riktajs/react';
 import { Layout } from './components/Layout';
 import { HomePage } from './pages/HomePage';
 import { AboutPage } from './pages/AboutPage';
@@ -119,88 +118,35 @@ interface SsrDataType {
 }
 
 export function App() {
-  const ssrData = useSsrData<SsrDataType>();
+  const ssrData = getSsrData<SsrDataType>();
   const { search } = useLocation();
   
-  // Use URL from ssrData for routing - ensures data and route are in sync
+  const title = ssrData?.title || 'Rikta SSR + React';
   const ssrUrl = ssrData?.url ?? '/';
   const pathname = ssrUrl.split('?')[0];
   const url = search ? `${pathname}?${search}` : pathname;
 
-  // Route based on pathname
   const renderPage = () => {
     if (pathname === '/about') return <AboutPage />;
     return <HomePage />;
   };
 
   return (
-    <Layout url={url} title={ssrData?.title}>
+    <Layout url={url} title={title}>
       {renderPage()}
     </Layout>
   );
 }
 ```
 
-## Components
+## Utils
 
-### `<RiktaProvider>`
+### `getSsrData()`
 
-Root provider that enables all Rikta React features:
-
-```tsx
-import { RiktaProvider } from '@riktajs/react';
-
-function Root() {
-  return (
-    <RiktaProvider>
-      <App />
-    </RiktaProvider>
-  );
-}
-```
-
-**Features:**
-- Reads `window.__SSR_DATA__` automatically
-- Provides routing context
-- Handles client-side navigation
-- Fetches new page data during navigation
-
-### `<Link>`
-
-Client-side navigation component:
+Pure function to read SSR data from `window.__SSR_DATA__`:
 
 ```tsx
-import { Link } from '@riktajs/react';
-
-function Navigation() {
-  return (
-    <nav>
-      <Link href="/">Home</Link>
-      <Link href="/about">About</Link>
-      <Link href="/item/123">Item 123</Link>
-      
-      {/* With options */}
-      <Link href="/dashboard" replace>Dashboard</Link>
-      <Link href="/next" scroll={false}>Next</Link>
-    </nav>
-  );
-}
-```
-
-**Props:**
-- `href` (required) - Target URL
-- `replace` - Replace history entry instead of push
-- `scroll` - Scroll to top after navigation (default: true)
-- All standard `<a>` props are supported
-
-## Hooks
-
-### `useSsrData()`
-
-Access SSR data passed from server:
-
-```tsx
-import { useSsrData } from '@riktajs/react';
+import { getSsrData } from '@riktajs/react';
 
 interface PageData {
   page: string;
@@ -208,7 +154,7 @@ interface PageData {
 }
 
 function ItemList() {
-  const ssrData = useSsrData<PageData>();
+  const ssrData = getSsrData<PageData>();
   
   if (!ssrData) return <div>Loading...</div>;
   
@@ -238,28 +184,119 @@ function ItemList() {
 }
 ```
 
-### `useNavigation()`
+### `setSsrData()` / `clearSsrDataCache()`
 
-Programmatic navigation:
+For testing or server-side rendering:
 
 ```tsx
-import { useNavigation } from '@riktajs/react';
+import { setSsrData, clearSsrDataCache } from '@riktajs/react';
+
+// Set SSR data manually (useful for testing)
+setSsrData({ data: { user: { name: 'Test' } }, url: '/profile' });
+
+// Clear the cache
+clearSsrDataCache();
+```
+
+## Navigation
+
+### Using Native Links
+
+Use standard HTML anchor tags for navigation:
+
+```tsx
+function Navigation() {
+  return (
+    <nav>
+      <a href="/">Home</a>
+      <a href="/about">About</a>
+      <a href="/item/123">Item 123</a>
+    </nav>
+  );
+}
+```
+
+### Programmatic Navigation with `useNavigate()`
+
+For programmatic navigation, use the `useNavigate()` hook:
+
+```tsx
+import { useNavigate } from '@riktajs/react';
 
 function MyComponent() {
-  const { navigate, pathname, isNavigating } = useNavigation();
+  const navigate = useNavigate();
 
   const handleSubmit = async () => {
     await saveData();
     navigate('/success');
   };
 
+  const handleSearch = (query: string) => {
+    // Navigation with query params - easy!
+    navigate('/search', { q: query, page: 1 });
+    // Results in: /search?q=query&page=1
+  };
+
+  const handleLogin = () => {
+    // Replace history entry (for redirects)
+    navigate('/dashboard', { replace: true });
+  };
+
+  return <button onClick={handleSubmit}>Submit</button>;
+}
+```
+
+## Hooks
+
+### `useSsrData()`
+
+Hook wrapper around `getSsrData()` for familiarity:
+
+```tsx
+import { useSsrData } from '@riktajs/react';
+
+interface PageData {
+  page: string;
+  items: Array<{ id: string; name: string }>;
+}
+
+function ItemList() {
+  const ssrData = useSsrData<PageData>();
+  
+  if (!ssrData) return <div>Loading...</div>;
+  
   return (
-    <div>
-      <p>Current path: {pathname}</p>
-      {isNavigating && <Spinner />}
-      <button onClick={handleSubmit}>Submit</button>
-    </div>
+    <ul>
+      {ssrData.data.items.map(item => (
+        <li key={item.id}>{item.name}</li>
+      ))}
+    </ul>
   );
+}
+```
+
+### `useNavigate()`
+
+Programmatic navigation using native browser APIs:
+
+```tsx
+import { useNavigate } from '@riktajs/react';
+
+function MyComponent() {
+  const navigate = useNavigate();
+
+  // Simple navigation
+  navigate('/dashboard');
+
+  // With query params
+  navigate('/search', { q: 'hello', page: 1 });
+  // Results in: /search?q=hello&page=1
+
+  // Replace history (no back button)
+  navigate('/login', { replace: true });
+
+  // Params + options
+  navigate('/items', { filter: 'active' }, { replace: true });
 }
 ```
 
@@ -480,42 +517,44 @@ export class PageController {
 }
 ```
 
-The `defaults` option sets common metadata for all routes. Individual `@Ssr()` decorators can override or extend these defaults.
+## Native Navigation
 
-## Client-Side Navigation Data Fetching
-
-When navigating client-side using `<Link>` or `navigate()`, `RiktaProvider` automatically fetches the new page's SSR data:
+This package uses native browser APIs for navigation:
 
 ### How It Works
 
-1. User clicks `<Link href="/about">`
-2. `RiktaProvider` intercepts the navigation
-3. Fetches `/about` with `X-Rikta-Data: 1` header
-4. Server returns JSON instead of HTML:
-   ```json
-   {
-     "data": { "page": "about", "team": [...] },
-     "url": "/about",
-     "title": "About Us",
-     "description": "Learn about our team"
-   }
-   ```
-5. Updates `ssrData` state
-6. App re-renders with new data
-7. Browser history updated
+1. User clicks `<a href="/about">`
+2. Browser performs full page navigation
+3. Server renders the new page with fresh SSR data
+4. Page hydrates with updated data
+
+### Programmatic Navigation
+
+```tsx
+import { useNavigate } from '@riktajs/react';
+
+function MyComponent() {
+  const navigate = useNavigate();
+
+  const handleClick = () => {
+    // Uses window.location.href under the hood
+    navigate('/about');
+  };
+}
+```
 
 ### Benefits
 
-- **No page flash** - Data fetched before route changes
-- **Consistent data structure** - Same shape as initial SSR
-- **SEO metadata** - Title and description updated automatically
-- **SPA experience** - Smooth navigation without full page reloads
+- **Always fresh data** - SSR data is always up-to-date
+- **SEO-friendly** - Every page is server-rendered
+- **Simpler mental model** - Standard web navigation
+- **No complex state management** - Each page is independent
 
 ## Example: Full Page Component
 
 ```tsx title="src/pages/ItemPage.tsx"
 import React from 'react';
-import { useSsrData, useParams, Link, useFetch } from '@riktajs/react';
+import { getSsrData, useParams, useFetch } from '@riktajs/react';
 
 interface Item {
   id: string;
@@ -530,10 +569,9 @@ interface PageData {
 }
 
 export function ItemPage() {
-  const ssrData = useSsrData<PageData>();
+  const ssrData = getSsrData<PageData>();
   const { id } = useParams<{ id: string }>();
   
-  // Get initial item from SSR data
   const item = ssrData?.data.item;
   
   // Fetch live stock data (client-side only)
@@ -552,7 +590,7 @@ export function ItemPage() {
         Stock: {stockData ? stockData.stock : item.stock}
         {stockData && ' (live)'}
       </p>
-      <Link href="/">Back to Home</Link>
+      <a href="/">Back to Home</a>
     </div>
   );
 }
@@ -565,13 +603,12 @@ All exports are fully typed:
 ```typescript
 import type {
   SsrData,
-  RouterContextValue,
-  NavigateOptions,
   FetchState,
   ActionState,
-  LinkProps,
   HydrationState,
   Location,
+  NavigateFn,
+  NavigateOptions,
   UseFetchOptions,
   UseActionOptions,
 } from '@riktajs/react';
@@ -579,19 +616,32 @@ import type {
 
 ## Best Practices
 
-### 1. Route Based on ssrData.url
+### 1. Use Native Links for Navigation
 
-Always use `ssrData.url` for routing to ensure data and route are in sync:
+Always prefer standard `<a>` tags:
 
 ```tsx
 // ✅ Good
-const pathname = ssrData?.url?.split('?')[0] ?? '/';
+<a href="/about">About</a>
 
-// ❌ Bad - can cause data mismatch
-const { pathname } = useLocation();
+// Use useNavigate() only for programmatic navigation
+const navigate = useNavigate();
+navigate('/dashboard');
 ```
 
-### 2. Avoid Hydration Mismatches
+### 2. Use getSsrData() for Data Access
+
+Access SSR data directly - no provider needed:
+
+```tsx
+// ✅ Good - direct access
+const ssrData = getSsrData<PageData>();
+
+// Also good - hook wrapper
+const ssrData = useSsrData<PageData>();
+```
+
+### 3. Avoid Hydration Mismatches
 
 Use `useHydration()` for client-only content:
 
@@ -605,24 +655,11 @@ if (!isHydrated) {
 return <DynamicContent />;
 ```
 
-### 3. Use skip with useFetch for Manual Triggers
+### 4. Use skip with useFetch for Manual Triggers
 
 ```tsx
 const { data, refetch } = useFetch('/api/data', { skip: true });
 
 // Call when needed
 <button onClick={refetch}>Load Data</button>
-```
-
-### 4. Provide Initial Params
-
-Pass params to `RiktaProvider` for SSR consistency:
-
-```tsx
-// In entry-server.tsx
-const params = extractParamsFromUrl(url);
-
-<RiktaProvider ssrData={ssrData} initialParams={params}>
-  <App />
-</RiktaProvider>
 ```

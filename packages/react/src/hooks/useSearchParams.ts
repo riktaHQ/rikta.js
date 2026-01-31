@@ -1,8 +1,11 @@
-import { useContext, useMemo } from 'react';
-import { RouterContext } from '../context/RouterContext.js';
+import { useCallback } from 'react';
 
 /**
- * Hook to access and manipulate URL search parameters
+ * Hook to access and update URL search parameters using native browser APIs
+ * 
+ * This hook provides a simple interface for reading and modifying URL query
+ * parameters. When updating params, it triggers a full page navigation to
+ * ensure SSR data is refreshed.
  * 
  * @returns Tuple of [URLSearchParams, setSearchParams function]
  * 
@@ -34,28 +37,63 @@ import { RouterContext } from '../context/RouterContext.js';
  *   );
  * }
  * ```
+ * 
+ * @example
+ * ```tsx
+ * // Merge with existing params
+ * function FilterComponent() {
+ *   const [searchParams, setSearchParams] = useSearchParams();
+ *   
+ *   const updateFilter = (filter: string) => {
+ *     // Get current params and update
+ *     const params = Object.fromEntries(searchParams.entries());
+ *     setSearchParams({ ...params, filter });
+ *   };
+ *   
+ *   return (
+ *     <select onChange={(e) => updateFilter(e.target.value)}>
+ *       <option value="">All</option>
+ *       <option value="active">Active</option>
+ *       <option value="inactive">Inactive</option>
+ *     </select>
+ *   );
+ * }
+ * ```
  */
-export function useSearchParams(): [URLSearchParams, (params: Record<string, string> | URLSearchParams) => void] {
-  const context = useContext(RouterContext);
+export function useSearchParams(): [URLSearchParams, (params: Record<string, string | number | boolean | undefined | null> | URLSearchParams) => void] {
+  // Get current search params
+  const getSearchParams = (): URLSearchParams => {
+    if (typeof window === 'undefined') {
+      return new URLSearchParams();
+    }
+    return new URLSearchParams(window.location.search);
+  };
 
-  const searchParams = useMemo(() => {
-    return new URLSearchParams(context.search);
-  }, [context.search]);
+  const searchParams = getSearchParams();
 
-  const setSearchParams = useMemo(() => {
-    return (params: Record<string, string> | URLSearchParams) => {
-      const newParams = params instanceof URLSearchParams 
-        ? params 
-        : new URLSearchParams(params);
-      
-      const search = newParams.toString();
-      const newUrl = search 
-        ? `${context.pathname}?${search}` 
-        : context.pathname;
-      
-      context.navigate(newUrl, { scroll: false });
-    };
-  }, [context.pathname, context.navigate]);
+  const setSearchParams = useCallback((params: Record<string, string | number | boolean | undefined | null> | URLSearchParams) => {
+    if (typeof window === 'undefined') return;
+
+    let newParams: URLSearchParams;
+    
+    if (params instanceof URLSearchParams) {
+      newParams = params;
+    } else {
+      newParams = new URLSearchParams();
+      for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined && value !== null) {
+          newParams.set(key, String(value));
+        }
+      }
+    }
+    
+    const search = newParams.toString();
+    const pathname = window.location.pathname;
+    const newUrl = search ? `${pathname}?${search}` : pathname;
+    
+    // Navigate using native browser API (full page load for SSR)
+    window.location.href = newUrl;
+  }, []);
 
   return [searchParams, setSearchParams];
 }

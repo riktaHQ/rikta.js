@@ -18,38 +18,6 @@ export interface SsrData<T = unknown> {
 }
 
 /**
- * Router context value interface
- */
-export interface RouterContextValue {
-  /** Current URL path */
-  pathname: string;
-  /** Current search params string (without ?) */
-  search: string;
-  /** Full URL */
-  href: string;
-  /** Navigate to a new URL */
-  navigate: (url: string, options?: NavigateOptions) => void | Promise<void>;
-  /** Extracted route params (e.g., { id: '123' } for /item/:id) */
-  params: Record<string, string>;
-  /** Update route params (used internally by RiktaProvider) */
-  setParams: (params: Record<string, string>) => void;
-  /** Whether a navigation is in progress */
-  isNavigating?: boolean;
-}
-
-/**
- * Navigation options
- */
-export interface NavigateOptions {
-  /** Replace current history entry instead of pushing */
-  replace?: boolean;
-  /** Scroll to top after navigation */
-  scroll?: boolean;
-  /** Additional state to store in history */
-  state?: unknown;
-}
-
-/**
  * Result type for server actions
  */
 export interface ActionResult<T = unknown> {
@@ -89,36 +57,6 @@ export interface ActionState<TInput = unknown, TResult = unknown> {
   result: ActionResult<TResult> | null;
   /** Reset action state */
   reset: () => void;
-}
-
-/**
- * Link component props
- */
-export interface LinkProps extends Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> {
-  /** Target URL */
-  href: string;
-  /** Replace history entry instead of push */
-  replace?: boolean;
-  /** Scroll to top after navigation */
-  scroll?: boolean;
-  /** Prefetch the linked page (future enhancement) */
-  prefetch?: boolean;
-  /** Additional state to pass to navigation */
-  state?: unknown;
-  /** Children elements */
-  children: React.ReactNode;
-}
-
-/**
- * RiktaProvider props
- */
-export interface RiktaProviderProps {
-  /** Initial SSR data from server */
-  ssrData?: SsrData;
-  /** Initial route params extracted from URL */
-  initialParams?: Record<string, string>;
-  /** Children elements */
-  children: React.ReactNode;
 }
 
 /**

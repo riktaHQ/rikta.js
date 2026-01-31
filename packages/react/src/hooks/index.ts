@@ -1,4 +1,4 @@
-export { useNavigation } from './useNavigation.js';
+export { useNavigate, type NavigateFn, type NavigateOptions } from './useNavigate.js';
 export { useParams } from './useParams.js';
 export { useSearchParams } from './useSearchParams.js';
 export { useLocation, type Location } from './useLocation.js';

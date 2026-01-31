@@ -1,6 +1,6 @@
 import React from 'react';
 import { renderToString } from 'react-dom/server';
-import { RiktaProvider, type SsrData } from '@riktajs/react';
+import { setSsrData, type SsrData } from '@riktajs/react';
 import { App } from './App';
 import { HeadBuilder } from '@riktajs/ssr';
 
@@ -21,11 +21,11 @@ export function render(url: string, context: Record<string, unknown> = {}) {
     description: contextDescription as string | undefined,
   };
 
-  const html = renderToString(
-    <RiktaProvider ssrData={ssrData}>
-      <App />
-    </RiktaProvider>
-  );
+  // Set SSR data for server-side rendering
+  setSsrData(ssrData);
+
+  // Render React app - no provider needed!
+  const html = renderToString(<App />);
 
   // Build head tags using HeadBuilder
   const head = new HeadBuilder();

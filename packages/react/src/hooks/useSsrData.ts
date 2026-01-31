@@ -1,5 +1,4 @@
-import { useContext } from 'react';
-import { SsrContext } from '../context/SsrContext.js';
+import { getSsrData } from '../utils/getSsrData.js';
 import type { SsrData } from '../types.js';
 
 /**
@@ -7,6 +6,9 @@ import type { SsrData } from '../types.js';
  * 
  * SSR data is passed via window.__SSR_DATA__ and contains
  * the initial data rendered on the server.
+ * 
+ * Note: This is a simple wrapper around getSsrData() for
+ * familiarity. You can also use getSsrData() directly.
  * 
  * @returns SSR data object or null if not available
  * 
@@ -51,6 +53,5 @@ import type { SsrData } from '../types.js';
  * ```
  */
 export function useSsrData<T = unknown>(): SsrData<T> | null {
-  const context = useContext(SsrContext);
-  return context as SsrData<T> | null;
+  return getSsrData<T>();
 }

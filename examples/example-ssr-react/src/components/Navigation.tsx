@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useLocation } from '@riktajs/react';
+import { useLocation } from '@riktajs/react';
 import { styles } from './styles.js';
 
 export function Navigation() {
@@ -15,7 +15,7 @@ export function Navigation() {
   return (
     <nav style={styles.nav}>
       {links.map((link) => (
-        <Link
+        <a
           key={link.id}
           href={link.href}
           style={{
@@ -24,7 +24,7 @@ export function Navigation() {
           }}
         >
           {link.label}
-        </Link>
+        </a>
       ))}
     </nav>
   );

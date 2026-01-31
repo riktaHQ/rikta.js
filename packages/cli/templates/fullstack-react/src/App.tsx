@@ -1,5 +1,5 @@
 import React from 'react';
-import { useSsrData, useLocation } from '@riktajs/react';
+import { getSsrData, useLocation } from '@riktajs/react';
 import { Layout } from './components/Layout.js';
 import { HomePage } from './pages/HomePage.js';
 import { ItemPage } from './pages/ItemPage.js';
@@ -12,7 +12,7 @@ interface SsrDataType {
 }
 
 export function App() {
-  const ssrData = useSsrData<SsrDataType>();
+  const ssrData = getSsrData<SsrDataType>();
   const { search } = useLocation();
   
   // Title comes from ssrData root level (set by @Ssr decorator)
