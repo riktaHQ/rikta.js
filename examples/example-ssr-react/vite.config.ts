@@ -17,7 +17,6 @@ export default defineConfig({
     },
   },
   ssr: {
-    // Don't externalize @riktajs packages in SSR build
-    noExternal: ['@riktajs/core', '@riktajs/ssr'],
+    external: ['@riktajs/core'],
   },
 });

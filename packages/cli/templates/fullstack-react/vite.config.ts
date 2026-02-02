@@ -17,6 +17,6 @@ export default defineConfig({
     },
   },
   ssr: {
-    noExternal: ['@riktajs/core', '@riktajs/ssr'],
+    external: ['@riktajs/core'],
   },
 });
