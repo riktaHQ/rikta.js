@@ -4,8 +4,6 @@ sidebar_label: SSR
 description: Enable fullstack applications with React, Vue, and other frontend frameworks using @riktajs/ssr
 ---
 
-# Server-Side Rendering (SSR)
-
 The `@riktajs/ssr` package enables Rikta to serve server-rendered frontend applications, transforming it into a true fullstack framework. Powered by Vite, it supports React, Vue, and other modern frontend frameworks with full Hot Module Replacement (HMR) in development.
 
 ## Overview
@@ -74,8 +72,9 @@ export default defineConfig({
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>My Rikta App</title>
+  <!--ssr-title-->
   <!--head-tags-->
+  <!--preload-links-->
 </head>
 <body>
   <div id="app"><!--ssr-outlet--></div>
@@ -100,6 +99,7 @@ export function render(url: string, context: Record<string, unknown> = {}) {
   
   return {
     html,
+    title: 'My Rikta App',
     head: `<meta name="description" content="My Rikta app" />`,
   };
 }
@@ -208,7 +208,7 @@ bootstrap();
 The `ssrPlugin` accepts the following options:
 
 | Option | Type | Default | Description |
-|--------|------|---------|-------------|
+| --- | --- | --- | --- |
 | `root` | `string` | `process.cwd()` | Project root directory where vite.config.ts is located |
 | `entryServer` | `string` | `'./src/entry-server'` | Path to server entry file (relative to root) |
 | `template` | `string` | `'./index.html'` | Path to HTML template (relative to root) |
@@ -231,16 +231,21 @@ export function render(url: string) {
 export function render(url: string, context: Record<string, unknown>) {
   return {
     html: '<div>Hello World</div>',
+    title: 'Hello World',
     head: '<meta name="description" content="..." />',
     preloadLinks: '<link rel="modulepreload" href="..." />',
+    modules: new Set(['src/entry-client.tsx']),
   };
 }
 ```
+
+When `modules` are returned and the client build generated `dist/client/.vite/ssr-manifest.json`, Rikta can derive preload links automatically.
 
 ## HTML Template Placeholders
 
 Your `index.html` template can include these placeholders:
 
+- `<!--ssr-title-->` - Where the page title will be injected
 - `<!--ssr-outlet-->` or `<!--app-->` - Where the rendered HTML will be inserted
 - `<!--head-tags-->` - Where head tags from render result will be inserted
 - `<!--preload-links-->` - Where preload links will be inserted
@@ -338,9 +343,10 @@ Add these scripts to your `package.json`:
 {
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "npm run build:client && npm run build:server",
-    "build:client": "vite build --outDir dist/client",
-    "build:server": "vite build --outDir dist/server --ssr src/entry-server.tsx",
+    "build": "npm run build:server && npm run build:client && npm run build:ssr",
+    "build:client": "vite build --outDir dist/client --ssrManifest",
+    "build:ssr": "vite build --outDir dist/server --ssr src/entry-server.tsx",
+    "build:server": "vite build --outDir dist --ssr src/server.ts",
     "start": "NODE_ENV=production node dist/server.js"
   }
 }
@@ -350,11 +356,11 @@ Add these scripts to your `package.json`:
 
 ```typescript
 await app.server.register(ssrPlugin, {
-  root: resolve(__dirname, '..'),
-  entryServer: './dist/server/entry-server.js',
-  template: './dist/client/index.html',
+  root: __dirname,
+  entryServer: './server/entry-server.js',
+  template: './client/index.html',
   dev: false,
-  buildDir: 'dist/client',
+  buildDir: '.',
 });
 ```
 
@@ -371,6 +377,7 @@ npx @riktajs/cli new my-app
 ```
 
 The template includes:
+
 - React 19 with SSR support
 - Vite configuration
 - TypeScript setup

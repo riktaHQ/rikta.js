@@ -6,12 +6,26 @@ import {
   SsrController,
   isSsrController,
   getSsrControllerMetadata,
+  getSsrOptions,
   Ssr,
   isSsrRoute,
   getSsrRouteMetadata,
   SSR_CONTROLLER_METADATA,
   SSR_ROUTE_METADATA,
 } from '../src/index.js';
+
+const { mockRequestScopeStorage, MockForbiddenException } = vi.hoisted(() => {
+  class HoistedForbiddenException extends Error {
+    readonly statusCode = 403;
+  }
+
+  return {
+    mockRequestScopeStorage: {
+      runAsync: vi.fn(async (callback: () => Promise<unknown>) => callback()),
+    },
+    MockForbiddenException: HoistedForbiddenException,
+  };
+});
 
 // Mock @riktajs/core to prevent registration errors
 vi.mock('@riktajs/core', () => ({
@@ -21,20 +35,22 @@ vi.mock('@riktajs/core', () => ({
   registry: {
     registerController: vi.fn(),
   },
+  requestScopeStorage: mockRequestScopeStorage,
+  ForbiddenException: MockForbiddenException,
 }));
 
 describe('SSR Decorators', () => {
   describe('@SsrController()', () => {
     it('should mark a class as an SSR controller', () => {
       @SsrController()
-      class TestController {}
+      class TestController { }
 
       expect(isSsrController(TestController)).toBe(true);
     });
 
     it('should store metadata with empty prefix by default', () => {
       @SsrController()
-      class TestController {}
+      class TestController { }
 
       const metadata = getSsrControllerMetadata(TestController);
       expect(metadata).toBeDefined();
@@ -44,7 +60,7 @@ describe('SSR Decorators', () => {
 
     it('should accept string prefix', () => {
       @SsrController('/pages')
-      class TestController {}
+      class TestController { }
 
       const metadata = getSsrControllerMetadata(TestController);
       expect(metadata?.prefix).toBe('/pages');
@@ -52,7 +68,7 @@ describe('SSR Decorators', () => {
 
     it('should normalize prefix without leading slash', () => {
       @SsrController('pages')
-      class TestController {}
+      class TestController { }
 
       const metadata = getSsrControllerMetadata(TestController);
       expect(metadata?.prefix).toBe('/pages');
@@ -60,7 +76,7 @@ describe('SSR Decorators', () => {
 
     it('should accept options object with prefix', () => {
       @SsrController({ prefix: '/app' })
-      class TestController {}
+      class TestController { }
 
       const metadata = getSsrControllerMetadata(TestController);
       expect(metadata?.prefix).toBe('/app');
@@ -72,11 +88,15 @@ describe('SSR Decorators', () => {
         entryServer: './src/admin-entry.tsx',
         template: './admin.html',
       })
-      class AdminController {}
+      class AdminController { }
 
       const metadata = getSsrControllerMetadata(AdminController);
       expect(metadata?.prefix).toBe('/admin');
       expect(metadata?.ssrOptions).toEqual({
+        entryServer: './src/admin-entry.tsx',
+        template: './admin.html',
+      });
+      expect(getSsrOptions(AdminController)).toEqual({
         entryServer: './src/admin-entry.tsx',
         template: './admin.html',
       });
@@ -89,7 +109,7 @@ describe('SSR Decorators', () => {
           head: [{ tag: 'meta', attrs: { name: 'author', content: 'John' } }],
         },
       })
-      class TestController {}
+      class TestController { }
 
       const metadata = getSsrControllerMetadata(TestController);
       expect(metadata?.defaults).toBeDefined();
@@ -99,7 +119,7 @@ describe('SSR Decorators', () => {
 
     it('should have empty defaults when not specified', () => {
       @SsrController()
-      class TestController {}
+      class TestController { }
 
       const metadata = getSsrControllerMetadata(TestController);
       expect(metadata?.defaults).toEqual({});
@@ -107,7 +127,7 @@ describe('SSR Decorators', () => {
 
     it('should also register as regular controller', () => {
       @SsrController('/test')
-      class TestController {}
+      class TestController { }
 
       const CONTROLLER_METADATA = Symbol.for('rikta:controller:metadata');
       const controllerMeta = Reflect.getMetadata(CONTROLLER_METADATA, TestController);
@@ -117,7 +137,7 @@ describe('SSR Decorators', () => {
 
     it('should mark as injectable', () => {
       @SsrController()
-      class TestController {}
+      class TestController { }
 
       const INJECTABLE_METADATA = Symbol.for('rikta:injectable:metadata');
       const injectableMeta = Reflect.getMetadata(INJECTABLE_METADATA, TestController);

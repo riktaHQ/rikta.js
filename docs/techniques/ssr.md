@@ -57,8 +57,9 @@ export default defineConfig({
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title><!--ssr-title--></title>
+  <!--ssr-title-->
   <!--head-tags-->
+  <!--preload-links-->
 </head>
 <body>
   <div id="app"><!--ssr-outlet--></div>
@@ -70,6 +71,7 @@ export default defineConfig({
 ### 3. Create entry files
 
 **Server Entry:**
+
 ```tsx
 // src/entry-server.tsx
 import React from 'react';
@@ -105,6 +107,7 @@ export function render(url: string, context: Record<string, unknown> = {}) {
 ```
 
 **Client Entry:**
+
 ```tsx
 // src/entry-client.tsx
 import React from 'react';
@@ -220,6 +223,7 @@ class PageController {
 ```
 
 Options:
+
 - `prefix?: string` - URL prefix for all routes
 - `defaults?: SsrRouteOptions` - Default route options (title, og, twitter, head, etc.) for all routes
 - `ssrOptions?: SsrOptions` - SSR configuration options for all routes
@@ -255,9 +259,13 @@ class PageController {
 ```
 
 **Merge behavior:**
+
 - Simple properties (`title`, `description`, `canonical`, `robots`): route overrides defaults
+- Named `meta` tags: merged by key
 - Nested objects (`og`, `twitter`, `cache`): properties are deep merged
 - Arrays (`head`): concatenated (defaults first, then route-specific)
+
+Controller-level SSR runtime overrides are forwarded to the SSR service. In practice, `entryServer`, `template`, `buildDir`, and `ssrManifest` are the safe per-controller overrides inside a shared app root. Keep `root`, `dev`, and `viteConfig` at plugin scope.
 
 ### @Ssr()
 
@@ -267,6 +275,7 @@ Configures SSR for a specific route:
 @Ssr({
   title?: string,
   description?: string,
+  meta?: Record<string, string>,
   og?: OpenGraphOptions,
   twitter?: TwitterCardOptions,
   canonical?: string,
@@ -308,6 +317,7 @@ Configures SSR for a specific route:
   // SEO
   canonical: 'https://example.com/page',
   robots: 'index, follow',
+  meta: { author: 'John Doe' },
   
   // Custom head tags
   head: [
@@ -370,7 +380,7 @@ const head = new HeadBuilder()
 ## Configuration
 
 | Option | Type | Default | Description |
-|--------|------|---------|-------------|
+| --- | --- | --- | --- |
 | `root` | `string` | `process.cwd()` | Project root directory |
 | `entryServer` | `string` | `'./src/entry-server'` | Server entry file path |
 | `template` | `string` | `'./index.html'` | HTML template path |
@@ -387,11 +397,11 @@ const head = new HeadBuilder()
 {
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "npm run build:client && npm run build:server && npm run build:ssr",
+    "build": "npm run build:server && npm run build:client && npm run build:ssr",
     "build:client": "vite build --outDir dist/client --ssrManifest",
-    "build:server": "vite build --outDir dist/server --ssr src/entry-server.tsx",
-    "build:ssr": "tsc && tsc-alias",
-    "start": "NODE_ENV=production node dist/server/server.js"
+    "build:ssr": "vite build --outDir dist/server --ssr src/entry-server.tsx",
+    "build:server": "vite build --outDir dist --ssr src/server.ts",
+    "start": "NODE_ENV=production node dist/server.js"
   }
 }
 ```
@@ -414,11 +424,11 @@ async function bootstrap() {
   });
 
   await app.server.register(ssrPlugin, {
-    root: resolve(__dirname, isProd ? '..' : '../..'),
-    entryServer: './src/entry-server.tsx',
-    template: './index.html',
+    root: isProd ? __dirname : resolve(__dirname, '..'),
+    entryServer: isProd ? './server/entry-server.js' : './src/entry-server.tsx',
+    template: isProd ? './client/index.html' : './index.html',
     dev: !isProd,
-    buildDir: 'dist',
+    buildDir: isProd ? '.' : 'dist',
   });
 
   app.server.registerSsrController(PageController);
@@ -444,6 +454,7 @@ app.server.registerSsrController(PageController);
 Class decorator for SSR controllers.
 
 **Options:**
+
 - `prefix?: string` - URL prefix for all routes
 - `defaults?: SsrRouteOptions` - Default route metadata (title, og, twitter, head, etc.)
 - `ssrOptions?: SsrOptions` - SSR configuration options
@@ -453,6 +464,7 @@ Class decorator for SSR controllers.
 Method decorator for SSR configuration.
 
 **Options:**
+
 - `title?: string` - Page title
 - `description?: string` - Meta description
 - `og?: OpenGraphOptions` - Open Graph tags
@@ -467,6 +479,7 @@ Method decorator for SSR configuration.
 Programmatic head tag builder.
 
 **Methods:**
+
 - `.title(value)` - Set page title
 - `.description(value)` - Set meta description
 - `.og(options)` - Add Open Graph tags
@@ -486,6 +499,7 @@ Programmatic head tag builder.
 Static helper for creating head tags.
 
 **Methods:**
+
 - `Head.meta(name, content)` - Create meta tag
 - `Head.property(property, content)` - Create meta property tag
 - `Head.link(rel, href, attrs?)` - Create link tag
@@ -580,6 +594,7 @@ npm run dev
 ```
 
 The template includes:
+
 - Pre-configured Vite setup
 - React with SSR support
 - Decorator-based controllers

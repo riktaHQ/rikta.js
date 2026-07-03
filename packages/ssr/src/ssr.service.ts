@@ -1,5 +1,6 @@
 import { resolve } from 'node:path';
 import { readFileSync, existsSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 import type { ViteDevServer } from 'vite';
 import type {
   SsrOptions,
@@ -7,6 +8,19 @@ import type {
   ResolvedSsrOptions,
   ServerEntryModule,
 } from './types.js';
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function stripLeadingDotSlash(value: string): string {
+  return value.replace(/^\.\//, '');
+}
 
 /**
  * SsrService - Core SSR service for Rikta
@@ -29,6 +43,9 @@ export class SsrService {
   private serverEntry: ServerEntryModule | null = null;
   private isInitialized = false;
   private manifest: Record<string, string[]> = {};
+  private readonly templateCache = new Map<string, string>();
+  private readonly serverEntryCache = new Map<string, ServerEntryModule>();
+  private readonly manifestCache = new Map<string, Record<string, string[]>>();
 
   /**
    * Initialize the SSR service
@@ -66,6 +83,50 @@ export class SsrService {
     };
   }
 
+  private resolveRenderOptions(overrides: Partial<SsrOptions>): ResolvedSsrOptions {
+    if (!this.options) {
+      throw new Error('SSR options not initialized');
+    }
+
+    const base = this.options;
+    const resolved: ResolvedSsrOptions = {
+      root: overrides.root ?? base.root,
+      entryServer: overrides.entryServer ?? base.entryServer,
+      template: overrides.template ?? base.template,
+      dev: overrides.dev ?? base.dev,
+      buildDir: overrides.buildDir ?? base.buildDir,
+      ssrManifest: overrides.ssrManifest ?? base.ssrManifest,
+      viteConfig: overrides.viteConfig ?? base.viteConfig,
+    };
+
+    if (resolved.dev !== base.dev) {
+      throw new Error(
+        'Per-controller dev mode overrides are not supported. Register a separate SSR plugin instance instead.'
+      );
+    }
+
+    if (base.dev && resolved.root !== base.root) {
+      throw new Error(
+        'Per-controller root overrides are not supported in development mode. Register a separate SSR plugin instance instead.'
+      );
+    }
+
+    return resolved;
+  }
+
+  private isDefaultRenderOptions(options: ResolvedSsrOptions): boolean {
+    if (!this.options) {
+      return false;
+    }
+
+    return options.root === this.options.root
+      && options.entryServer === this.options.entryServer
+      && options.template === this.options.template
+      && options.dev === this.options.dev
+      && options.buildDir === this.options.buildDir
+      && options.ssrManifest === this.options.ssrManifest;
+  }
+
   /**
    * Initialize development mode with Vite dev server
    */
@@ -87,10 +148,6 @@ export class SsrService {
       appType: 'custom',
       ...this.options.viteConfig,
     });
-
-    // Read template HTML
-    const templatePath = resolve(this.options.root, this.options.template);
-    this.templateHtml = readFileSync(templatePath, 'utf-8');
   }
 
   /**
@@ -101,48 +158,147 @@ export class SsrService {
       throw new Error('SSR options not initialized');
     }
 
-    const { root, buildDir, entryServer, template, ssrManifest } = this.options;
+    const templatePath = this.resolveTemplatePath(this.options);
+    this.templateHtml = this.readCachedFile(templatePath);
 
-    // Load the template from build directory
-    const templatePath = resolve(root, buildDir, 'client', template.replace('./', ''));
-    const altTemplatePath = resolve(root, buildDir, 'client', 'index.html');
-
-    if (existsSync(templatePath)) {
-      this.templateHtml = readFileSync(templatePath, 'utf-8');
-    } else if (existsSync(altTemplatePath)) {
-      this.templateHtml = readFileSync(altTemplatePath, 'utf-8');
-    } else {
-      throw new Error(`Template not found at ${templatePath} or ${altTemplatePath}`);
+    const manifestPath = this.resolveManifestPath(this.options);
+    if (manifestPath) {
+      this.manifest = this.readManifest(manifestPath);
     }
 
-    // Load SSR manifest if it exists
-    const manifestPath = resolve(root, buildDir, 'client', ssrManifest);
-    if (existsSync(manifestPath)) {
-      this.manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'));
-    }
+    const serverEntryPath = this.resolveServerEntryPath(this.options);
+    this.serverEntry = await this.importServerEntry(serverEntryPath);
+  }
 
-    // Load the server entry
-    const serverEntryPath = resolve(root, buildDir, 'server', 'entry-server.js');
-    const altServerEntryPath = resolve(root, entryServer.replace(/\.(ts|tsx|js|jsx)$/, '.js'));
+  private resolveTemplatePath(options: ResolvedSsrOptions): string {
+    const template = stripLeadingDotSlash(options.template);
+    return this.findExistingPath('Template', [
+      resolve(options.root, options.buildDir, 'client', template),
+      resolve(options.root, options.buildDir, template),
+      resolve(options.root, template),
+      resolve(options.root, options.buildDir, 'client', 'index.html'),
+    ]);
+  }
 
-    if (existsSync(serverEntryPath)) {
-      this.serverEntry = await import(serverEntryPath);
-    } else if (existsSync(altServerEntryPath)) {
-      this.serverEntry = await import(altServerEntryPath);
-    } else {
-      // Try with built server directory
-      const builtServerPath = resolve(root, buildDir, 'server/entry-server.js');
-      if (existsSync(builtServerPath)) {
-        this.serverEntry = await import(builtServerPath);
-      } else {
-        throw new Error(
-          `Server entry not found. Tried:\n` +
-            `  - ${serverEntryPath}\n` +
-            `  - ${altServerEntryPath}\n` +
-            `  - ${builtServerPath}`
-        );
+  private resolveManifestPath(options: ResolvedSsrOptions): string | null {
+    const manifest = stripLeadingDotSlash(options.ssrManifest);
+    const candidates = [
+      resolve(options.root, options.buildDir, 'client', manifest),
+      resolve(options.root, options.buildDir, manifest),
+      resolve(options.root, manifest),
+    ];
+
+    for (const candidate of new Set(candidates)) {
+      if (existsSync(candidate)) {
+        return candidate;
       }
     }
+
+    return null;
+  }
+
+  private resolveServerEntryPath(options: ResolvedSsrOptions): string {
+    const entryServer = stripLeadingDotSlash(options.entryServer).replace(/\.(ts|tsx|js|jsx)$/, '.js');
+    return this.findExistingPath('Server entry', [
+      resolve(options.root, options.buildDir, 'server', 'entry-server.js'),
+      resolve(options.root, options.buildDir, entryServer),
+      resolve(options.root, entryServer),
+    ]);
+  }
+
+  private findExistingPath(kind: string, candidates: string[]): string {
+    const uniqueCandidates = [...new Set(candidates)];
+
+    for (const candidate of uniqueCandidates) {
+      if (existsSync(candidate)) {
+        return candidate;
+      }
+    }
+
+    throw new Error(
+      `${kind} not found. Tried:\n` + uniqueCandidates.map((candidate) => `  - ${candidate}`).join('\n')
+    );
+  }
+
+  private readCachedFile(filePath: string): string {
+    const cached = this.templateCache.get(filePath);
+    if (cached !== undefined) {
+      return cached;
+    }
+
+    const contents = readFileSync(filePath, 'utf-8');
+    this.templateCache.set(filePath, contents);
+    return contents;
+  }
+
+  private readManifest(filePath: string): Record<string, string[]> {
+    const cached = this.manifestCache.get(filePath);
+    if (cached) {
+      return cached;
+    }
+
+    const manifest = JSON.parse(readFileSync(filePath, 'utf-8')) as Record<string, string[]>;
+    this.manifestCache.set(filePath, manifest);
+    return manifest;
+  }
+
+  private async importServerEntry(filePath: string): Promise<ServerEntryModule> {
+    const cached = this.serverEntryCache.get(filePath);
+    if (cached) {
+      return cached;
+    }
+
+    const serverEntry = await import(pathToFileURL(filePath).href) as ServerEntryModule;
+    this.serverEntryCache.set(filePath, serverEntry);
+    return serverEntry;
+  }
+
+  private async loadTemplate(url: string, options: ResolvedSsrOptions): Promise<string> {
+    if (options.dev) {
+      if (!this.vite) {
+        throw new Error('Vite dev server not initialized');
+      }
+
+      const templatePath = resolve(options.root, options.template);
+      const template = readFileSync(templatePath, 'utf-8');
+      return this.vite.transformIndexHtml(url, template);
+    }
+
+    if (this.isDefaultRenderOptions(options) && this.templateHtml) {
+      return this.templateHtml;
+    }
+
+    return this.readCachedFile(this.resolveTemplatePath(options));
+  }
+
+  private async loadServerEntry(options: ResolvedSsrOptions): Promise<ServerEntryModule> {
+    if (options.dev) {
+      if (!this.vite) {
+        throw new Error('Vite dev server not initialized');
+      }
+
+      const entryPath = resolve(options.root, options.entryServer);
+      return this.vite.ssrLoadModule(entryPath) as Promise<ServerEntryModule>;
+    }
+
+    if (this.isDefaultRenderOptions(options) && this.serverEntry) {
+      return this.serverEntry;
+    }
+
+    return this.importServerEntry(this.resolveServerEntryPath(options));
+  }
+
+  private loadManifestForOptions(options: ResolvedSsrOptions): Record<string, string[]> {
+    if (options.dev) {
+      return {};
+    }
+
+    if (this.isDefaultRenderOptions(options)) {
+      return this.manifest;
+    }
+
+    const manifestPath = this.resolveManifestPath(options);
+    return manifestPath ? this.readManifest(manifestPath) : {};
   }
 
   /**
@@ -166,33 +322,25 @@ export class SsrService {
    * @param context - Optional context to pass to the render function
    * @returns Full HTML string
    */
-  async render(url: string, context: Omit<SsrRenderContext, 'url'> = {}): Promise<string> {
+  async render(
+    url: string,
+    context: Omit<SsrRenderContext, 'url'> = {},
+    overrides: Partial<SsrOptions> = {}
+  ): Promise<string> {
     if (!this.isInitialized || !this.options) {
       throw new Error('SSR service not initialized. Call init() first.');
     }
+
+    const renderOptions = this.resolveRenderOptions(overrides);
 
     const renderContext: SsrRenderContext = {
       url,
       ...context,
     };
 
-    let template = this.templateHtml;
-    let render: ServerEntryModule['render'];
-
-    if (this.options.dev && this.vite) {
-      // Development mode: use Vite to transform template and load module
-      template = await this.vite.transformIndexHtml(url, template);
-
-      const entryPath = resolve(this.options.root, this.options.entryServer);
-      const module = await this.vite.ssrLoadModule(entryPath);
-      render = module.render;
-    } else {
-      // Production mode: use pre-loaded template and module
-      if (!this.serverEntry) {
-        throw new Error('Server entry not loaded');
-      }
-      render = this.serverEntry.render;
-    }
+    const template = await this.loadTemplate(url, renderOptions);
+    const serverEntry = await this.loadServerEntry(renderOptions);
+    const render = serverEntry.render;
 
     // Call the render function
     const result = await render(url, renderContext);
@@ -202,6 +350,7 @@ export class SsrService {
     let title = '';
     let head = '';
     let preloadLinks = '';
+    let modules: Iterable<string> | undefined;
 
     if (typeof result === 'string') {
       appHtml = result;
@@ -210,27 +359,46 @@ export class SsrService {
       title = result.title ?? '';
       head = result.head ?? '';
       preloadLinks = result.preloadLinks ?? '';
+      modules = result.modules;
     }
 
-    // Generate preload links from manifest (production)
-    if (!this.options.dev && Object.keys(this.manifest).length > 0) {
-      preloadLinks = this.renderPreloadLinks(url);
+    if (!renderOptions.dev && modules) {
+      const generatedPreloadLinks = this.renderPreloadLinks(
+        modules,
+        this.loadManifestForOptions(renderOptions)
+      );
+      preloadLinks = [preloadLinks, generatedPreloadLinks].filter(Boolean).join('\n');
     }
 
-    // Check if template has head placeholder
+    const titleTag = title ? `<title>${escapeHtml(title)}</title>` : '';
+    const hasStandaloneTitlePlaceholder = template.includes('<!--ssr-title-->');
+    const hasWrappedTitlePlaceholder = template.includes('<title><!--ssr-title--></title>');
     const hasHeadPlaceholder = template.includes('<!--head-tags-->');
+    const hasPreloadPlaceholder = template.includes('<!--preload-links-->');
 
     // Replace placeholders in template
     let html = template
+      .replace('<title><!--ssr-title--></title>', titleTag)
       .replace('<!--ssr-outlet-->', appHtml)
       .replace('<!--app-->', appHtml)
-      .replace('<!--ssr-title-->', title ? `<title>${title}</title>` : '')
+      .replace('<!--ssr-title-->', escapeHtml(title))
       .replace('<!--head-tags-->', head)
       .replace('<!--preload-links-->', preloadLinks);
 
-    // Inject head tags before </head> only if no placeholder was used
+    const headInjections: string[] = [];
+
+    if (titleTag && !hasStandaloneTitlePlaceholder && !hasWrappedTitlePlaceholder) {
+      headInjections.push(titleTag);
+    }
+    if (preloadLinks && !hasPreloadPlaceholder) {
+      headInjections.push(preloadLinks);
+    }
     if (head && !hasHeadPlaceholder) {
-      html = html.replace('</head>', `${head}\n</head>`);
+      headInjections.push(head);
+    }
+
+    if (headInjections.length > 0) {
+      html = html.replace('</head>', `${headInjections.join('\n')}\n</head>`);
     }
 
     return html;
@@ -239,13 +407,18 @@ export class SsrService {
   /**
    * Generate preload links from manifest
    */
-  private renderPreloadLinks(url: string): string {
+  private renderPreloadLinks(modules: Iterable<string>, manifest: Record<string, string[]>): string {
+    const files = new Set<string>();
+
+    for (const moduleId of modules) {
+      const manifestEntry = manifest[moduleId] ?? [];
+      for (const file of manifestEntry) {
+        files.add(file);
+      }
+    }
+
     const links: string[] = [];
-
-    // Get the entry point for the URL
-    const entry = this.manifest[url] || this.manifest['/'] || [];
-
-    for (const file of entry) {
+    for (const file of files) {
       if (file.endsWith('.js')) {
         links.push(`<link rel="modulepreload" crossorigin href="${file}">`);
       } else if (file.endsWith('.css')) {
@@ -278,6 +451,9 @@ export class SsrService {
     this.serverEntry = null;
     this.templateHtml = '';
     this.manifest = {};
+    this.templateCache.clear();
+    this.serverEntryCache.clear();
+    this.manifestCache.clear();
   }
 
   /**

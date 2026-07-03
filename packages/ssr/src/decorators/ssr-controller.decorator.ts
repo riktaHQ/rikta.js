@@ -121,6 +121,7 @@ export function SsrController(options?: string | SsrControllerOptions): ClassDec
       defaults,
     };
     Reflect.defineMetadata(SSR_CONTROLLER_METADATA, metadata, target);
+    Reflect.defineMetadata(SSR_OPTIONS_METADATA, ssrOptions, target);
 
     // Also store as regular controller for router compatibility
     Reflect.defineMetadata(CONTROLLER_METADATA, { prefix: normalizedPrefix }, target);

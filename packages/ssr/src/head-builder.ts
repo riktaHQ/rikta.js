@@ -17,7 +17,7 @@ function escapeHtml(str: string): string {
  */
 function renderTag(tag: HeadTag): string {
   const { tag: tagName, attrs, children } = tag;
-  
+
   const attrStr = Object.entries(attrs)
     .map(([key, value]) => {
       if (value === true) return key;
@@ -29,7 +29,7 @@ function renderTag(tag: HeadTag): string {
 
   // Self-closing tags
   const selfClosing = ['meta', 'link', 'base', 'br', 'hr', 'img', 'input'];
-  
+
   if (selfClosing.includes(tagName)) {
     return `<${tagName}${attrStr ? ' ' + attrStr : ''} />`;
   }
@@ -74,11 +74,22 @@ export class HeadBuilder {
   }
 
   /**
+   * Add named meta tags from a map.
+   */
+  metaTags(tags: Record<string, string>): this {
+    for (const [name, content] of Object.entries(tags)) {
+      this.meta(name, content);
+    }
+
+    return this;
+  }
+
+  /**
    * Add Open Graph tags
    */
   og(options: SsrRouteOptions['og']): this {
     if (!options) return this;
-    
+
     if (options.title) {
       this.tags.push({ tag: 'meta', attrs: { property: 'og:title', content: options.title } });
     }
@@ -97,7 +108,7 @@ export class HeadBuilder {
     if (options.siteName) {
       this.tags.push({ tag: 'meta', attrs: { property: 'og:site_name', content: options.siteName } });
     }
-    
+
     return this;
   }
 
@@ -106,7 +117,7 @@ export class HeadBuilder {
    */
   twitter(options: SsrRouteOptions['twitter']): this {
     if (!options) return this;
-    
+
     if (options.card) {
       this.tags.push({ tag: 'meta', attrs: { name: 'twitter:card', content: options.card } });
     }
@@ -125,7 +136,7 @@ export class HeadBuilder {
     if (options.image) {
       this.tags.push({ tag: 'meta', attrs: { name: 'twitter:image', content: options.image } });
     }
-    
+
     return this;
   }
 
@@ -238,7 +249,7 @@ export class HeadBuilder {
         .replace(/>/g, '\\u003e')
         .replace(/&/g, '\\u0026')
         .replace(/'/g, '\\u0027');
-      
+
       lines.push(`<script>window.__SSR_DATA__ = ${serializedData};</script>`);
     }
 
@@ -271,6 +282,10 @@ export function buildHead(
 
   if (options.description) {
     builder.description(options.description);
+  }
+
+  if (options.meta) {
+    builder.metaTags(options.meta);
   }
 
   if (options.og) {

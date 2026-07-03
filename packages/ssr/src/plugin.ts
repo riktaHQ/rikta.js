@@ -82,14 +82,15 @@ const ssrPluginImpl: FastifyPluginAsync<SsrOptions> = async (
     const resolvedOptions = ssrService.getOptions();
     if (resolvedOptions) {
       const clientPath = resolve(resolvedOptions.root, resolvedOptions.buildDir, 'client');
-      const assetsPath = resolve(clientPath, 'assets');
 
       try {
         const fastifyStatic = await import('@fastify/static');
-        // Serve assets from /assets/ path
+        // Serve built client assets and root-level public files without taking over app routes.
         await fastify.register(fastifyStatic.default, {
-          root: assetsPath,
-          prefix: '/assets/',
+          root: clientPath,
+          prefix: '/',
+          wildcard: false,
+          globIgnore: ['index.html', '.vite/**'],
           decorateReply: false,
         });
       } catch (error) {

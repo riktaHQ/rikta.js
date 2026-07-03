@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "npm run build:server && npm run build:client && npm run build:ssr",
-    "build:client": "vite build --outDir dist/client",
+    "build:client": "vite build --outDir dist/client --ssrManifest",
     "build:ssr": "vite build --outDir dist/server --ssr src/entry-server.tsx",
     "build:server": "vite build --outDir dist --ssr src/server.ts",
     "start": "NODE_ENV=production node dist/server.js",

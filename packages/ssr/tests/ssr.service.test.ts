@@ -7,8 +7,11 @@ vi.mock('node:fs', async () => {
   return {
     ...actual,
     readFileSync: vi.fn((path: string) => {
+      if (path.includes('admin.html')) {
+        return '<!DOCTYPE html><html><head></head><body><main><!--ssr-outlet--></main></body></html>';
+      }
       if (path.includes('index.html')) {
-        return '<!DOCTYPE html><html><head><!--head-tags--></head><body><div id="app"><!--ssr-outlet--></div></body></html>';
+        return '<!DOCTYPE html><html><head><title><!--ssr-title--></title><!--head-tags--><!--preload-links--></head><body><div id="app"><!--ssr-outlet--></div></body></html>';
       }
       if (path.includes('ssr-manifest.json')) {
         return '{}';
@@ -16,6 +19,7 @@ vi.mock('node:fs', async () => {
       throw new Error(`File not found: ${path}`);
     }),
     existsSync: vi.fn((path: string) => {
+      if (path.includes('admin.html')) return true;
       if (path.includes('index.html')) return true;
       if (path.includes('ssr-manifest.json')) return false;
       if (path.includes('entry-server')) return true;
@@ -112,7 +116,7 @@ describe('SsrService', () => {
       });
 
       mockViteServer.ssrLoadModule.mockResolvedValueOnce({
-        render: vi.fn((url: string, ctx: Record<string, unknown>) => 
+        render: vi.fn((url: string, ctx: Record<string, unknown>) =>
           `<div>User: ${ctx.user || 'guest'}</div>`
         ),
       });
@@ -120,6 +124,46 @@ describe('SsrService', () => {
       const html = await service.render('/profile', { user: 'john' });
 
       expect(html).toContain('<div>User: john</div>');
+    });
+
+    it('should support wrapped title placeholders without nesting title tags', async () => {
+      await service.init({
+        root: '/test/project',
+        dev: true,
+      });
+
+      mockViteServer.ssrLoadModule.mockResolvedValueOnce({
+        render: vi.fn(() => ({
+          html: '<div>Profile</div>',
+          title: 'Profile',
+        })),
+      });
+
+      const html = await service.render('/profile');
+
+      expect(html).toContain('<title>Profile</title>');
+      expect(html).not.toContain('<title><title>Profile</title></title>');
+    });
+
+    it('should honor per-render template and entry overrides in development mode', async () => {
+      await service.init({
+        root: '/test/project',
+        dev: true,
+      });
+
+      mockViteServer.ssrLoadModule.mockResolvedValueOnce({
+        render: vi.fn(() => '<div>Admin Panel</div>'),
+      });
+
+      const html = await service.render('/admin', {}, {
+        entryServer: './src/admin-entry-server.tsx',
+        template: './admin.html',
+      });
+
+      expect(mockViteServer.ssrLoadModule).toHaveBeenCalledWith(
+        '/test/project/src/admin-entry-server.tsx'
+      );
+      expect(html).toContain('<main><div>Admin Panel</div></main>');
     });
   });
 

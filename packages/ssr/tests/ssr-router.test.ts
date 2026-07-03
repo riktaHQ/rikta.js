@@ -4,6 +4,32 @@ import { SsrRouter } from '../src/ssr-router.js';
 import { SsrController, Ssr, SSR_CONTROLLER_METADATA } from '../src/index.js';
 import type { SsrService } from '../src/ssr.service.js';
 
+const { mockRequestScopeStorage, MockForbiddenException } = vi.hoisted(() => {
+  class HoistedForbiddenException extends Error {
+    readonly statusCode = 403;
+
+    constructor(message = 'Forbidden') {
+      super(message);
+      this.name = 'ForbiddenException';
+    }
+
+    getStatus(): number {
+      return this.statusCode;
+    }
+
+    getResponse(): string {
+      return this.message;
+    }
+  }
+
+  return {
+    mockRequestScopeStorage: {
+      runAsync: vi.fn(async (callback: () => Promise<unknown>) => callback()),
+    },
+    MockForbiddenException: HoistedForbiddenException,
+  };
+});
+
 // Mock @riktajs/core
 vi.mock('@riktajs/core', () => ({
   container: {
@@ -12,6 +38,8 @@ vi.mock('@riktajs/core', () => ({
   registry: {
     registerController: vi.fn(),
   },
+  requestScopeStorage: mockRequestScopeStorage,
+  ForbiddenException: MockForbiddenException,
 }));
 
 // Create mock route metadata key
@@ -35,6 +63,7 @@ describe('SsrRouter', () => {
   beforeEach(() => {
     // Reset mocks
     vi.clearAllMocks();
+    mockRequestScopeStorage.runAsync.mockClear();
 
     // Create mock Fastify instance
     mockFastify = {
@@ -56,6 +85,8 @@ describe('SsrRouter', () => {
     // Create mock container
     mockContainer = {
       resolve: vi.fn((cls: any) => new cls()),
+      getProviderScope: vi.fn(() => 'singleton'),
+      hasRequestScopedProviders: vi.fn(() => false),
     };
 
     router = new SsrRouter(
@@ -115,7 +146,7 @@ describe('SsrRouter', () => {
       expect(mockFastify.get).toHaveBeenCalledWith('/pages/about', expect.any(Function));
     });
 
-    it('should resolve controller from container', () => {
+    it('should resolve controller from container when handling a request', async () => {
       @SsrController()
       class PageController {
         @Get('/')
@@ -125,6 +156,17 @@ describe('SsrRouter', () => {
       }
 
       router.registerController(PageController, true);
+
+      const handler = mockFastify.get.mock.calls[0][1];
+      const mockRequest = { url: '/', headers: {} };
+      const mockReply = {
+        type: vi.fn().mockReturnThis(),
+        send: vi.fn().mockReturnThis(),
+        header: vi.fn().mockReturnThis(),
+        status: vi.fn().mockReturnThis(),
+      };
+
+      await handler(mockRequest, mockReply);
 
       expect(mockContainer.resolve).toHaveBeenCalledWith(PageController);
     });
@@ -168,7 +210,8 @@ describe('SsrRouter', () => {
           data: 'test',
           // SSR data for hydration
           __SSR_DATA__: { title: 'Home', data: 'test' },
-        })
+        }),
+        expect.objectContaining({ root: '/test', dev: true })
       );
 
       // Verify response
@@ -204,6 +247,41 @@ describe('SsrRouter', () => {
         expect.objectContaining({
           title: 'Home Page',
           description: 'Welcome',
+        }),
+        expect.objectContaining({ root: '/test', dev: true })
+      );
+    });
+
+    it('should pass controller-level SSR overrides to the SSR service', async () => {
+      @SsrController({ entryServer: './src/admin-entry.tsx', template: './admin.html' })
+      class PageController {
+        @Get('/')
+        home() {
+          return { page: 'admin' };
+        }
+      }
+
+      router.registerController(PageController, true);
+
+      const handler = mockFastify.get.mock.calls[0][1];
+      const mockRequest = { url: '/', headers: {} };
+      const mockReply = {
+        type: vi.fn().mockReturnThis(),
+        send: vi.fn().mockReturnThis(),
+        header: vi.fn().mockReturnThis(),
+        status: vi.fn().mockReturnThis(),
+      };
+
+      await handler(mockRequest, mockReply);
+
+      expect(mockSsrService.render).toHaveBeenCalledWith(
+        '/',
+        expect.objectContaining({ page: 'admin' }),
+        expect.objectContaining({
+          root: '/test',
+          dev: true,
+          entryServer: './src/admin-entry.tsx',
+          template: './admin.html',
         })
       );
     });
@@ -265,8 +343,43 @@ describe('SsrRouter', () => {
         '/',
         expect.objectContaining({
           async: true,
-        })
+        }),
+        expect.objectContaining({ root: '/test', dev: true })
       );
+    });
+
+    it('should wrap execution in request scope when request-scoped providers exist', async () => {
+      mockContainer.hasRequestScopedProviders = vi.fn(() => true);
+
+      router = new SsrRouter(
+        mockFastify,
+        mockSsrService as SsrService,
+        { root: '/test', dev: true },
+        mockContainer
+      );
+
+      @SsrController()
+      class PageController {
+        @Get('/')
+        home() {
+          return { page: 'home' };
+        }
+      }
+
+      router.registerController(PageController, true);
+
+      const handler = mockFastify.get.mock.calls[0][1];
+      const mockRequest = { url: '/', headers: {} };
+      const mockReply = {
+        type: vi.fn().mockReturnThis(),
+        send: vi.fn().mockReturnThis(),
+        header: vi.fn().mockReturnThis(),
+        status: vi.fn().mockReturnThis(),
+      };
+
+      await handler(mockRequest, mockReply);
+
+      expect(mockRequestScopeStorage.runAsync).toHaveBeenCalled();
     });
 
     it('should handle errors gracefully', async () => {
@@ -626,6 +739,46 @@ describe('SsrRouter', () => {
       // Guard should be resolved from container
       expect(mockContainer.resolve).toHaveBeenCalledWith(MyGuard);
       expect(mockSsrService.render).toHaveBeenCalled();
+    });
+
+    it('should resolve request-scoped guard classes on each request', async () => {
+      class RequestGuard {
+        canActivate() {
+          return true;
+        }
+      }
+
+      mockContainer.getProviderScope = vi.fn((token: unknown) =>
+        token === RequestGuard ? 'request' : 'singleton'
+      );
+      mockContainer.resolve = vi.fn((cls: any) => new cls());
+
+      @SsrController()
+      class PageController {
+        @Get('/request-guard')
+        @UseGuards(RequestGuard)
+        requestGuardPage() {
+          return { page: 'request-guard' };
+        }
+      }
+
+      router.registerController(PageController, true);
+
+      const handler = mockFastify.get.mock.calls[0][1];
+      const mockRequest = { url: '/request-guard', headers: {} };
+      const mockReply = {
+        type: vi.fn().mockReturnThis(),
+        send: vi.fn().mockReturnThis(),
+        header: vi.fn().mockReturnThis(),
+        status: vi.fn().mockReturnThis(),
+      };
+
+      await handler(mockRequest, mockReply);
+      await handler(mockRequest, mockReply);
+
+      expect(
+        mockContainer.resolve.mock.calls.filter(([token]: [unknown]) => token === RequestGuard)
+      ).toHaveLength(2);
     });
   });
 });

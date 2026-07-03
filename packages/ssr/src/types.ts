@@ -97,6 +97,12 @@ export interface SsrRenderResult {
    * Preload links for assets
    */
   preloadLinks?: string;
+
+  /**
+   * Module IDs used during the render.
+   * When returned alongside an SSR manifest, Rikta can generate preload links.
+   */
+  modules?: Iterable<string>;
 }
 
 /**
@@ -140,6 +146,31 @@ export interface SsrExtendedContext extends SsrRenderContext {
    * Additional meta tags
    */
   meta?: Record<string, string>;
+
+  /**
+   * Open Graph metadata
+   */
+  og?: Record<string, unknown>;
+
+  /**
+   * Twitter Card metadata
+   */
+  twitter?: Record<string, unknown>;
+
+  /**
+   * Canonical URL for the page
+   */
+  canonical?: string;
+
+  /**
+   * Robots directive
+   */
+  robots?: string;
+
+  /**
+   * Custom head tags
+   */
+  head?: unknown[];
 
   /**
    * SSR data to be serialized and hydrated on client

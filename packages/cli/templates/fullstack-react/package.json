@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "npm run build:server && npm run build:client && npm run build:ssr",
-    "build:client": "vite build --outDir dist/client",
+    "build:client": "vite build --outDir dist/client --ssrManifest",
     "build:ssr": "vite build --outDir dist/server --ssr src/entry-server.tsx",
     "build:server": "vite build --outDir dist --ssr src/server.ts",
     "start": "NODE_ENV=production node dist/server.js",
@@ -24,14 +24,14 @@
   "license": "MIT",
   "dependencies": {
     "@fastify/static": "^8.3.0",
-    "@riktajs/core": "^0.11.5",
-    "@riktajs/react": "^0.11.6",
-    "@riktajs/ssr": "^0.11.6",
+    "@riktajs/core": "^0.12.0",
+    "@riktajs/react": "^0.12.0",
+    "@riktajs/ssr": "^0.12.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
-    "@riktajs/cli": "^0.11.7",
+    "@riktajs/cli": "^0.12.0",
     "@types/node": "^22.10.2",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",

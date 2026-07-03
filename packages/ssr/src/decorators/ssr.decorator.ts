@@ -9,12 +9,12 @@ export interface HeadTag {
    * Tag name (e.g., 'meta', 'link', 'script')
    */
   tag: string;
-  
+
   /**
    * Tag attributes
    */
   attrs: Record<string, string | boolean>;
-  
+
   /**
    * Inner content (for script, style, etc.)
    */
@@ -34,6 +34,11 @@ export interface SsrRouteOptions {
    * Meta description for SEO
    */
   description?: string;
+
+  /**
+   * Additional meta tags keyed by name
+   */
+  meta?: Record<string, string>;
 
   /**
    * Open Graph metadata
@@ -142,6 +147,7 @@ export interface SsrRouteMetadata {
  *   @Ssr({
  *     title: 'Home Page',
  *     description: 'Welcome to our site',
+ *   meta: { author: 'Rikta Team' },
  *     cache: { maxAge: 60, staleWhileRevalidate: 120 }
  *   })
  *   home() {

@@ -118,13 +118,13 @@ bootstrap();
 ### SSR Options
 
 | Option | Type | Default | Description |
-|--------|------|---------|-------------|
+| --- | --- | --- | --- |
 | `root` | `string` | `process.cwd()` | Project root directory |
 | `entryServer` | `string` | `'./src/entry-server'` | Path to server entry file |
 | `template` | `string` | `'./index.html'` | Path to HTML template |
 | `dev` | `boolean` | `auto` | Enable development mode (auto-detected from NODE_ENV) |
 | `buildDir` | `string` | `'dist'` | Build output directory |
-| `ssrManifest` | `string` | `'ssr-manifest.json'` | SSR manifest filename |
+| `ssrManifest` | `string` | `'.vite/ssr-manifest.json'` | SSR manifest filename |
 
 ### HTML Template
 
@@ -136,8 +136,9 @@ Your `index.html` should include placeholders for SSR content:
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>My Rikta App</title>
+  <!--ssr-title-->
   <!--head-tags-->
+  <!--preload-links-->
 </head>
 <body>
   <div id="app"><!--ssr-outlet--></div>
@@ -155,7 +156,8 @@ Your `index.html` should include placeholders for SSR content:
 Marks a class as an SSR controller with optional route prefix and default options.
 
 ```typescript
-import { SsrController, Ssr, Get, Head } from '@riktajs/ssr';
+import { Get } from '@riktajs/core';
+import { SsrController, Ssr, Head } from '@riktajs/ssr';
 
 @SsrController({
   prefix: '/pages',
@@ -175,9 +177,13 @@ export class PageController {
 ```
 
 The `defaults` option allows setting common metadata for all routes in the controller. Individual `@Ssr()` decorators can override or extend these defaults:
+
 - Simple properties: route overrides defaults
+- Named `meta` tags: merged by key
 - Nested objects (`og`, `twitter`, `cache`): merged (route takes precedence)
 - Arrays (`head`): concatenated
+
+Controller-level SSR runtime overrides are forwarded to the SSR service. In practice, `entryServer`, `template`, `buildDir`, and `ssrManifest` are the safe per-controller overrides inside a shared app root. Keep `root`, `dev`, and `viteConfig` at plugin scope.
 
 #### `@Ssr(options)`
 
@@ -187,6 +193,7 @@ Configures SSR metadata for a route handler.
 @Ssr({
   title: 'Page Title',
   description: 'SEO description',
+  meta: { author: 'Rikta Team' },
   og: { image: '/og-image.png', type: 'website' },
   twitter: { card: 'summary_large_image' },
   canonical: 'https://example.com/page',
@@ -199,7 +206,7 @@ Configures SSR metadata for a route handler.
 
 When using `@riktajs/react` with SSR, the framework supports automatic data fetching for client-side navigation. When a client navigates to a new page, the `RiktaProvider` fetches the SSR data via a special header:
 
-```
+```http
 X-Rikta-Data: 1
 ```
 
@@ -215,6 +222,7 @@ The server responds with JSON instead of full HTML:
 ```
 
 This enables:
+
 - **Seamless navigation** without page reloads
 - **Consistent data** between SSR and client navigation
 - **SEO metadata** passed to client for title updates
@@ -232,7 +240,7 @@ await app.server.register(ssrPlugin, options);
 ### SSR Plugin Options
 
 | Option | Type | Description |
-|--------|------|-------------|
+| --- | --- | --- |
 | `root` | `string` | Project root directory |
 | `entryServer` | `string` | Path to server entry file |
 | `template` | `string` | Path to HTML template |
@@ -371,7 +379,7 @@ class MyController {
 
 ### Methods
 
-#### `render(url: string, context?: Record<string, any>): Promise<string>`
+#### `render(url: string, context?: Record<string, any>, overrides?: Partial<SsrOptions>): Promise<string>`
 
 Renders the application for the given URL and returns the full HTML.
 
@@ -384,10 +392,13 @@ Transforms the HTML template with Vite's transformations (in dev mode).
 ### 1. Build for production
 
 ```bash
-# Build client
-vite build --outDir dist/client
+# Build the server runtime bundle
+vite build --outDir dist --ssr src/server.ts
 
-# Build server
+# Build client
+vite build --outDir dist/client --ssrManifest
+
+# Build SSR entry
 vite build --outDir dist/server --ssr src/entry-server.tsx
 ```
 
@@ -397,11 +408,11 @@ vite build --outDir dist/server --ssr src/entry-server.tsx
 const app = await Rikta.create({ port: 3000 });
 
 await app.server.register(ssrPlugin, {
-  root: resolve(__dirname, '..'),
-  entryServer: './dist/server/entry-server.js',
-  template: './dist/client/index.html',
+  root: __dirname,
+  entryServer: './server/entry-server.js',
+  template: './client/index.html',
   dev: false,
-  buildDir: 'dist/client',
+  buildDir: '.',
 });
 ```
 
