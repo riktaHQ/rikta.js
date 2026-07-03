@@ -13,7 +13,7 @@ Use this skill when the codebase uses Rikta as its backend framework and the age
 Load this skill when one or more of these are true:
 
 - `package.json` contains `@riktajs/core` or other `@riktajs/*` dependencies.
-- The code uses `Rikta.create()`, `@Controller()`, `@Injectable()`, `@Autowired()`, `@Provider()`, `@UseGuards()`, `@UseMiddleware()`, or `@UseInterceptors()`.
+- The code uses `Rikta.create()`, `@Controller()`, `@Injectable()`, `@Autowired()`, `@Provider()`, `@UseGuards()`, `@UseMiddleware()`, `@UseInterceptors()`, `ssrPlugin`, `@SsrController()`, or `@Ssr()`.
 - The task mentions discovery, DI scopes, request scope, config providers, EventBus, validation, Swagger, TypeORM, queue, passport, or SSR in a Rikta app.
 
 ## Mental Model
@@ -144,6 +144,7 @@ Interceptors wrap the handler like an onion. Middleware does not replace guards.
 - Controllers and routing: `@Controller`, `@Get`, `@Post`, `@Param`, `@Body`, `@Query`, `@Headers`
 - DI and config: `@Injectable`, `@Autowired`, `InjectionToken`, `@Provider`, config providers
 - Request pipeline: `@UseGuards`, `@UseMiddleware`, `@UseInterceptors`
+- SSR and fullstack: `ssrPlugin`, `app.server.ssr`, `app.server.registerSsrController`, `@SsrController`, `@Ssr`, `HeadBuilder`, `Head`
 - Validation: Zod schemas with request decorators
 - Lifecycle: `OnProviderInit`, `OnApplicationBootstrap`, `OnApplicationListen`, `OnApplicationShutdown`, `EventBus`
 
@@ -155,14 +156,30 @@ When the app uses additional Rikta packages, inspect these areas:
 - `@riktajs/typeorm`: database bootstrap and provider lifecycle
 - `@riktajs/queue`: workers, processors, and queue-backed providers
 - `@riktajs/passport`: authentication guards and user context
-- `@riktajs/ssr` and `@riktajs/react`: SSR routes, rendering, and build integration
+- `@riktajs/ssr`: SSR routes, rendering, template integration, and production build layout
+- `@riktajs/react`: hydration, SSR data access, and client-side navigation data fetching
 - `@riktajs/cli`: scaffolding, generated templates, and project layout conventions
+
+### SSR Package Guidance
+
+- Register SSR with `await app.server.register(ssrPlugin, options)`. This decorates the Fastify instance with `app.server.ssr` and `app.server.registerSsrController(...)`.
+- Prefer `@SsrController()` for HTML routes and keep regular `@Controller()` APIs separate unless mixed routing is intentional and well-tested.
+- SSR routes support `@UseGuards()`, `@UseMiddleware()`, and `@UseInterceptors()`. Reason about them in the same order as core routes: guards, middleware, handler, then interceptor unwind.
+- Request-scoped providers on SSR routes still obey the same constraint as the rest of Rikta: only access them during request handling. If SSR behavior diverges from standard HTTP routes, inspect request-scope wrapping first.
+- Safe per-controller SSR overrides inside one app root are `entryServer`, `template`, `buildDir`, and `ssrManifest`. Keep `root`, `dev`, and `viteConfig` at plugin scope unless you intentionally register a separate SSR plugin instance.
+- Typical SSR templates use `<!--ssr-title-->`, `<!--head-tags-->`, `<!--preload-links-->`, and `<!--ssr-outlet-->` placeholders.
+- For `@riktajs/react`, client-side navigation fetches route data with the `X-Rikta-Data: 1` header. SSR handlers may return JSON instead of full HTML for that request mode.
+- Production SSR usually needs three artifacts: a server runtime bundle, a client bundle generated with `--ssrManifest`, and an SSR entry bundle.
+- If the server entry returns `modules`, Rikta can derive preload links from the Vite SSR manifest. If preloads look wrong, inspect the manifest shape before changing route logic.
+- In production, static serving should expose both hashed assets and root-level public files without swallowing application routes.
+- When working on the first-party SSR package, validate with `cd packages/ssr && npm test && npm run build`. For a smoke check of the shipped React example, run `cd examples/example-ssr-react && npm run build`.
 
 ## Validation Advice For App Repos
 
 - Inspect `package.json` first and follow the app's own scripts.
 - Typical commands are `npm run dev`, `npm run build`, and `npm run test`, but do not assume them blindly.
 - If you change framework wiring, validate both the route behavior and the lifecycle or discovery behavior involved.
+- For SSR work, validate both request-time behavior and build-time layout: HTML render path, data-only navigation path, and production output structure.
 
 ## Output Expectations
 
@@ -171,4 +188,5 @@ When answering or coding in a Rikta app:
 - explain framework-specific constraints when they affect the design
 - prefer Rikta-native patterns over generic Express or NestJS patterns
 - mention request-scope proxy limitations when they are relevant
+- call out SSR-specific build and template constraints when they matter to the fix
 - keep examples aligned with actual Rikta decorators and lifecycle names
