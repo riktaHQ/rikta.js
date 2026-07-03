@@ -97,6 +97,7 @@ Dependency Injection container:
 
 - **Singleton scope**: One instance (default)
 - **Transient scope**: New instance each time
+- **Request scope**: One instance per HTTP request
 - **Token-based injection**: For interfaces
 - **Property injection**: `@Autowired()`
 
@@ -169,14 +170,15 @@ Providers can implement lifecycle interfaces:
 
 | Interface | Method | When Called |
 |-----------|--------|-------------|
-| `OnModuleInit` | `onModuleInit()` | After provider initialized |
+| `OnProviderInit` | `onProviderInit()` | After singleton provider initialized |
+| `OnProviderDestroy` | `onProviderDestroy()` | During singleton provider shutdown |
 | `OnApplicationBootstrap` | `onApplicationBootstrap()` | After all providers ready |
 | `OnApplicationShutdown` | `onApplicationShutdown()` | When `app.close()` called |
 
 ```typescript
 @Injectable()
-class DatabaseService implements OnModuleInit, OnApplicationShutdown {
-  async onModuleInit() {
+class DatabaseService implements OnProviderInit, OnApplicationShutdown {
+  async onProviderInit() {
     await this.connect();
   }
 

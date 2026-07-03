@@ -14,7 +14,7 @@ import {
     RiktaMiddleware,
     getMiddlewaresMetadata,
 } from '../src/core/middleware';
-import { MIDDLEWARE_METADATA } from '../src/core/constants';
+import { INJECTABLE_METADATA, MIDDLEWARE_METADATA } from '../src/core/constants';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 
 describe('Middleware', () => {
@@ -44,8 +44,8 @@ describe('Middleware', () => {
                 }
             }
 
-            const injectable = Reflect.getMetadata('injectable', TestMiddleware);
-            expect(injectable).toBe(true);
+            expect(Reflect.getMetadata(INJECTABLE_METADATA, TestMiddleware)).toEqual({ scope: 'singleton' });
+            expect(Container.getInstance().has(TestMiddleware)).toBe(true);
         });
     });
 
@@ -60,7 +60,7 @@ describe('Middleware', () => {
 
             @Controller('/test')
             @UseMiddleware(LoggerMiddleware)
-            class TestController {}
+            class TestController { }
 
             const middlewares = Reflect.getMetadata(MIDDLEWARE_METADATA, TestController);
             expect(middlewares).toBeDefined();
@@ -79,7 +79,7 @@ describe('Middleware', () => {
             class TestController {
                 @Get('/')
                 @UseMiddleware(AuthMiddleware)
-                getAll() {}
+                getAll() { }
             }
 
             const middlewares = Reflect.getMetadata(MIDDLEWARE_METADATA, TestController, 'getAll');
@@ -105,7 +105,7 @@ describe('Middleware', () => {
 
             @Controller('/test')
             @UseMiddleware(Middleware1, Middleware2)
-            class TestController {}
+            class TestController { }
 
             const middlewares = Reflect.getMetadata(MIDDLEWARE_METADATA, TestController);
             expect(middlewares).toHaveLength(2);
@@ -131,7 +131,7 @@ describe('Middleware', () => {
             @Controller('/test')
             @UseMiddleware(Middleware1)
             @UseMiddleware(Middleware2)
-            class TestController {}
+            class TestController { }
 
             const middlewares = Reflect.getMetadata(MIDDLEWARE_METADATA, TestController);
             expect(middlewares).toHaveLength(2);
@@ -143,7 +143,7 @@ describe('Middleware', () => {
             @Controller('/test')
             class TestController {
                 @Get('/')
-                getAll() {}
+                getAll() { }
             }
 
             const middlewares = getMiddlewaresMetadata(TestController, 'getAll');
@@ -162,7 +162,7 @@ describe('Middleware', () => {
             @UseMiddleware(LoggerMiddleware)
             class TestController {
                 @Get('/')
-                getAll() {}
+                getAll() { }
             }
 
             const middlewares = getMiddlewaresMetadata(TestController, 'getAll');
@@ -182,7 +182,7 @@ describe('Middleware', () => {
             class TestController {
                 @Get('/')
                 @UseMiddleware(MethodMiddleware)
-                getAll() {}
+                getAll() { }
             }
 
             const middlewares = getMiddlewaresMetadata(TestController, 'getAll');
@@ -210,7 +210,7 @@ describe('Middleware', () => {
             class TestController {
                 @Get('/')
                 @UseMiddleware(MethodMiddleware)
-                getAll() {}
+                getAll() { }
             }
 
             const middlewares = getMiddlewaresMetadata(TestController, 'getAll');
@@ -231,7 +231,7 @@ describe('Middleware', () => {
 
             @Middleware()
             class LoggerMiddleware implements RiktaMiddleware {
-                constructor(@Autowired(LogService) private logService: LogService) {}
+                constructor(@Autowired(LogService) private logService: LogService) { }
 
                 use(req: any, reply: any, next: () => void) {
                     this.logService.log('Request received');
@@ -276,7 +276,7 @@ describe('Middleware', () => {
 
             const middleware = new AsyncMiddleware();
             const nextFn = vi.fn();
-            
+
             await middleware.use({}, {}, nextFn);
             expect(nextFn).toHaveBeenCalled();
         });
@@ -605,7 +605,7 @@ describe('Middleware', () => {
 
             @Middleware()
             class LoggerMiddleware implements RiktaMiddleware {
-                constructor(@Autowired(LogService) private logService: LogService) {}
+                constructor(@Autowired(LogService) private logService: LogService) { }
 
                 use(req: FastifyRequest, res: FastifyReply, next: () => void) {
                     this.logService.log();
@@ -635,6 +635,45 @@ describe('Middleware', () => {
             });
 
             expect(serviceCalled).toBe(true);
+
+            await app.close();
+        });
+
+        it('should create new transient middleware instances for each request', async () => {
+            let instanceCount = 0;
+
+            @Middleware()
+            class TransientMiddleware implements RiktaMiddleware {
+                constructor() {
+                    instanceCount++;
+                }
+
+                use(req: FastifyRequest, res: FastifyReply, next: () => void) {
+                    next();
+                }
+            }
+
+            Container.getInstance().register(TransientMiddleware, { scope: 'transient' });
+
+            @Controller('/test-transient-mw')
+            @UseMiddleware(TransientMiddleware)
+            class TransientMiddlewareController {
+                @Get('/')
+                getData() {
+                    return { ok: true };
+                }
+            }
+
+            const app = await Rikta.create({
+                controllers: [TransientMiddlewareController],
+                logger: false,
+                silent: true,
+            });
+
+            await app.server.inject({ method: 'GET', url: '/test-transient-mw' });
+            await app.server.inject({ method: 'GET', url: '/test-transient-mw' });
+
+            expect(instanceCount).toBe(2);
 
             await app.close();
         });

@@ -4,6 +4,9 @@ import { Container } from '../src/core/container';
 import { Registry } from '../src/core/registry';
 import { Controller } from '../src/core/decorators/controller.decorator';
 import { Get } from '../src/core/decorators/route.decorator';
+import { Injectable } from '../src/core/decorators/injectable.decorator';
+import { Autowired } from '../src/core/decorators/autowired.decorator';
+import { EventBus } from '../src/core/lifecycle/event-bus';
 
 describe('Application', () => {
   beforeEach(() => {
@@ -14,10 +17,10 @@ describe('Application', () => {
   describe('Bootstrap', () => {
     it('should create application instance', async () => {
       const app = await Rikta.create({ port: 0, logger: false, silent: true, controllers: [] });
-      
+
       expect(app).toBeDefined();
       expect(app.server).toBeDefined();
-      
+
       await app.close();
     });
 
@@ -30,8 +33,8 @@ describe('Application', () => {
         }
       }
 
-      const app = await Rikta.create({ 
-        port: 0, 
+      const app = await Rikta.create({
+        port: 0,
         logger: false,
         silent: true,
         controllers: [TestController1]
@@ -76,6 +79,53 @@ describe('Application', () => {
 
       await app.close();
     });
+
+    it('should isolate container state and event bus between application instances', async () => {
+      const app1 = await Rikta.create({ port: 0, logger: false, silent: true, controllers: [] });
+      const app2 = await Rikta.create({ port: 0, logger: false, silent: true, controllers: [] });
+
+      expect(app1.getContainer()).not.toBe(app2.getContainer());
+      expect(app1.getContainer().resolve(EventBus)).toBe(app1.getEventBus());
+      expect(app2.getContainer().resolve(EventBus)).toBe(app2.getEventBus());
+      expect(app1.getContainer().resolve(EventBus)).not.toBe(app2.getEventBus());
+
+      await app1.close();
+      await app2.close();
+    });
+
+    it('should allow singleton controllers to use request-scoped providers', async () => {
+      @Injectable({ scope: 'request' })
+      class RequestContextService {
+        readonly requestId = Math.random().toString(36);
+      }
+
+      @Controller('/scoped')
+      class ScopedController {
+        @Autowired(RequestContextService)
+        private requestContext!: RequestContextService;
+
+        @Get()
+        getRequestData() {
+          return { requestId: this.requestContext.requestId };
+        }
+      }
+
+      const app = await Rikta.create({
+        port: 0,
+        logger: false,
+        silent: true,
+        controllers: [ScopedController],
+      });
+
+      const firstResponse = await app.server.inject({ method: 'GET', url: '/scoped' });
+      const secondResponse = await app.server.inject({ method: 'GET', url: '/scoped' });
+
+      expect(firstResponse.statusCode).toBe(200);
+      expect(secondResponse.statusCode).toBe(200);
+      expect(firstResponse.json().requestId).not.toBe(secondResponse.json().requestId);
+
+      await app.close();
+    });
   });
 
   describe('Server', () => {
@@ -96,7 +146,7 @@ describe('Application', () => {
       });
 
       const address = await app.listen();
-      
+
       expect(address).toContain('http://');
       expect(app.getUrl()).toBe(address);
 
@@ -166,10 +216,10 @@ describe('Application', () => {
     it('should use default port when not specified', async () => {
       // Just test that config is applied correctly
       const app = await Rikta.create({ logger: false, silent: true, controllers: [] });
-      
+
       // App should be created without errors
       expect(app).toBeDefined();
-      
+
       await app.close();
     });
   });

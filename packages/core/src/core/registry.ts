@@ -1,5 +1,5 @@
 import { Constructor } from './types.js';
-import { 
+import {
   ConfigProviderAlreadyRegisteredException,
 } from './exceptions/config.exceptions.js';
 
@@ -32,13 +32,13 @@ interface AbstractImplementation {
  */
 class Registry {
   private static instance: Registry;
-  
+
   /** All registered controllers */
   private controllers = new Set<Constructor>();
-  
+
   /** All registered providers (services via @Injectable) */
   private providers = new Set<Constructor>();
-  
+
   /** All registered custom providers (via @Provider) */
   private customProviders = new Set<Constructor>();
 
@@ -48,7 +48,7 @@ class Registry {
   /** Map of abstract classes to their implementations */
   private abstractImplementations = new Map<Constructor, AbstractImplementation[]>();
 
-  private constructor() {}
+  private constructor() { }
 
   static getInstance(): Registry {
     if (!Registry.instance) {
@@ -61,8 +61,41 @@ class Registry {
    * Reset the registry (useful for testing)
    */
   static reset(): void {
-    const newInstance = new Registry();
-    Registry.instance = newInstance;
+    if (!Registry.instance) {
+      Registry.instance = new Registry();
+      return;
+    }
+
+    Registry.instance.clear();
+  }
+
+  /**
+   * Clear all registered state while preserving the exported singleton reference.
+   */
+  clear(): void {
+    this.controllers.clear();
+    this.providers.clear();
+    this.customProviders.clear();
+    this.configProviderMap.clear();
+    this.abstractImplementations.clear();
+  }
+
+  /**
+   * Create an isolated copy of the registry for a single application instance.
+   */
+  clone(): Registry {
+    const cloned = new Registry();
+    cloned.controllers = new Set(this.controllers);
+    cloned.providers = new Set(this.providers);
+    cloned.customProviders = new Set(this.customProviders);
+    cloned.configProviderMap = new Map(this.configProviderMap);
+    cloned.abstractImplementations = new Map(
+      [...this.abstractImplementations.entries()].map(([abstractClass, implementations]) => [
+        abstractClass,
+        implementations.map(implementation => ({ ...implementation })),
+      ])
+    );
+    return cloned;
   }
 
   /**
@@ -153,7 +186,7 @@ class Registry {
         providerClass.name
       );
     }
-    
+
     this.configProviderMap.set(token, providerClass);
   }
 
@@ -201,7 +234,7 @@ class Registry {
    */
   registerAbstractImplementation(abstractClass: Constructor, implementation: Constructor, name?: string): void {
     const implementations = this.abstractImplementations.get(abstractClass) ?? [];
-    
+
     // Check if already registered
     const existing = implementations.find(i => i.implementation === implementation);
     if (!existing) {

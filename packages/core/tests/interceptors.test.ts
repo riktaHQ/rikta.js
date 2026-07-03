@@ -341,6 +341,37 @@ describe('Interceptors', () => {
       app.getRouter().clearInterceptorCache();
       expect(app.getRouter().getInterceptorCacheSize()).toBe(0);
     });
+
+    it('should resolve request-scoped interceptors per request', async () => {
+      const requestIds = new Set<string>();
+
+      @Injectable({ scope: 'request' })
+      class RequestScopedInterceptor implements Interceptor {
+        readonly requestId = Math.random().toString(36);
+
+        async intercept(context: ExecutionContext, next: CallHandler): Promise<unknown> {
+          requestIds.add(this.requestId);
+          return next.handle();
+        }
+      }
+
+      @Controller('/cache-3')
+      @UseInterceptors(RequestScopedInterceptor)
+      class TestControllerRequestScopedInterceptor {
+        @Get('/')
+        handler() {
+          return { ok: true };
+        }
+      }
+
+      app = await Rikta.create({ port: 0, silent: true });
+      await app.listen();
+
+      await app.server.inject({ method: 'GET', url: '/cache-3' });
+      await app.server.inject({ method: 'GET', url: '/cache-3' });
+
+      expect(requestIds.size).toBe(2);
+    });
   });
 
   describe('Error Handling in Interceptors', () => {

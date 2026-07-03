@@ -1,4 +1,6 @@
 import 'reflect-metadata';
+import { INJECTABLE_METADATA } from '../constants.js';
+import { container } from '../container/container.js';
 
 /**
  * @Middleware() Decorator
@@ -55,8 +57,9 @@ export function Middleware(): ClassDecorator {
   return (target: Function) => {
     // Mark as middleware
     Reflect.defineMetadata('middleware', true, target);
-    
-    // Also mark as injectable for DI resolution
-    Reflect.defineMetadata('injectable', true, target);
+
+    // Also register as a singleton injectable in the DI container
+    Reflect.defineMetadata(INJECTABLE_METADATA, { scope: 'singleton' }, target);
+    container.register(target as new (...args: unknown[]) => unknown, { scope: 'singleton' });
   };
 }

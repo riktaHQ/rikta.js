@@ -2,12 +2,12 @@ import 'reflect-metadata';
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { Container } from '../container/container.js';
 import { requestScopeStorage } from '../container/request-scope.js';
-import { 
-  CONTROLLER_METADATA, 
-  ROUTES_METADATA, 
-  PARAM_METADATA, 
+import {
+  CONTROLLER_METADATA,
+  ROUTES_METADATA,
+  PARAM_METADATA,
   HTTP_CODE_METADATA,
-  ParamType 
+  ParamType
 } from '../constants.js';
 import { Constructor, RouteDefinition, RouteContext } from '../types.js';
 import { ParamMetadata } from '../decorators/param.decorator.js';
@@ -32,6 +32,11 @@ import type { Interceptor, CallHandler } from '../interceptors/interceptor.inter
  * Pre-compiled for maximum performance
  */
 type ParamExtractor = (context: RouteContext) => unknown;
+
+/**
+ * Resolver that returns the component instance to use for the current request.
+ */
+type InstanceResolver<T> = () => T;
 
 /**
  * Compiled route handler type
@@ -66,18 +71,18 @@ interface CompiledParamResolver {
 export class Router {
   /** Cache for guard instances (singleton per guard class) */
   private readonly guardCache = new Map<GuardClass, CanActivate>();
-  
+
   /** Cache for middleware instances (singleton per middleware class) */
   private readonly middlewareCache = new Map<MiddlewareClass, RiktaMiddleware>();
 
   /** Cache for interceptor instances (singleton per interceptor class) */
   private readonly interceptorCache = new Map<InterceptorClass, Interceptor>();
-  
+
   constructor(
     private readonly server: FastifyInstance,
     private readonly container: Container,
     private readonly globalPrefix: string = ''
-  ) {}
+  ) { }
 
   /**
    * Clear the guard instance cache
@@ -147,16 +152,13 @@ export class Router {
       );
     }
 
-    // Resolve controller instance from container
-    const controllerInstance = this.container.resolve(controllerClass);
-
     // Get routes metadata
-    const routes: RouteDefinition[] = 
+    const routes: RouteDefinition[] =
       Reflect.getMetadata(ROUTES_METADATA, controllerClass) ?? [];
 
     // Register each route
     for (const route of routes) {
-      this.registerRoute(controllerClass, controllerInstance, controllerMeta.prefix, route, silent);
+      this.registerRoute(controllerClass, controllerMeta.prefix, route, silent);
     }
   }
 
@@ -165,16 +167,15 @@ export class Router {
    */
   private registerRoute(
     controllerClass: Constructor,
-    controllerInstance: unknown,
     controllerPrefix: string,
     route: RouteDefinition,
     silent: boolean = false
   ): void {
     // Build full path
     const fullPath = this.buildPath(controllerPrefix, route.path);
-    
+
     // Get the handler method
-    const handler = (controllerInstance as Record<string | symbol, Function>)[route.handlerName];
+    const handler = (controllerClass.prototype as Record<string | symbol, Function>)[route.handlerName];
     if (typeof handler !== 'function') {
       throw new Error(
         `Handler ${String(route.handlerName)} not found on ${controllerClass.name}`
@@ -182,11 +183,11 @@ export class Router {
     }
 
     // Get parameter metadata
-    const paramsMeta: ParamMetadata[] = 
+    const paramsMeta: ParamMetadata[] =
       Reflect.getMetadata(PARAM_METADATA, controllerClass, route.handlerName) ?? [];
 
     // Get custom parameter metadata (from createParamDecorator)
-    const customParamsMeta: CustomParamMetadata[] = 
+    const customParamsMeta: CustomParamMetadata[] =
       getCustomParamMetadata(controllerClass, route.handlerName);
 
     // Get HTTP status code if set
@@ -217,45 +218,56 @@ export class Router {
     // ============================================
     // OPTIMIZATION: Pre-resolve guard instances
     // ============================================
-    const guardInstances = this.resolveGuardInstances(guards);
-    const hasGuards = guardInstances.length > 0;
+    const guardResolvers = this.resolveGuardInstances(guards);
+    const hasGuards = guardResolvers.length > 0;
 
     // ============================================
     // OPTIMIZATION: Pre-resolve middleware instances
     // ============================================
-    const middlewareInstances = this.resolveMiddlewareInstances(middleware);
-    const hasMiddleware = middlewareInstances.length > 0;
+    const middlewareResolvers = this.resolveMiddlewareInstances(middleware);
+    const hasMiddleware = middlewareResolvers.length > 0;
 
     // ============================================
     // OPTIMIZATION: Pre-resolve interceptor instances
     // ============================================
-    const interceptorInstances = this.resolveInterceptorInstances(interceptors);
-    const hasInterceptors = interceptorInstances.length > 0;
+    const interceptorResolvers = this.resolveInterceptorInstances(interceptors);
+    const hasInterceptors = interceptorResolvers.length > 0;
+
+    const shouldUseRequestScope = this.container.hasRequestScopedProviders();
 
     // Pre-create execution context factory (needed for guards, interceptors, or custom params)
     const needsContext = hasGuards || hasCustomParams || hasInterceptors;
     const createContext = needsContext
-      ? (req: FastifyRequest, rep: FastifyReply) => 
-          new ExecutionContextImpl(req, rep, controllerClass, route.handlerName)
+      ? (req: FastifyRequest, rep: FastifyReply) =>
+        new ExecutionContextImpl(req, rep, controllerClass, route.handlerName)
       : null;
 
     // Inner handler logic (extracted for request scope wrapping)
     const executeHandler = async (request: FastifyRequest, reply: FastifyReply) => {
       // Create execution context if needed (shared between guards, interceptors, and custom params)
       const executionContext = createContext ? createContext(request, reply) : null;
-      
+
       // 1. Execute guards (if any)
       if (hasGuards && executionContext) {
-        await this.executeGuardsOptimized(guardInstances, executionContext);
+        await this.executeGuardsOptimized(guardResolvers, executionContext);
       }
-      
+
       // 2. Execute middleware (if any)
       if (hasMiddleware) {
-        await this.executeMiddlewareChain(middlewareInstances, request, reply);
+        await this.executeMiddlewareChain(middlewareResolvers, request, reply);
       }
-      
+
       // 3. Prepare the core handler function
       const coreHandler = async (): Promise<unknown> => {
+        const controllerInstance = this.container.resolve(controllerClass);
+        const resolvedHandler = (controllerInstance as Record<string | symbol, Function>)[route.handlerName];
+
+        if (typeof resolvedHandler !== 'function') {
+          throw new Error(
+            `Handler ${String(route.handlerName)} not found on ${controllerClass.name}`
+          );
+        }
+
         let args: unknown[] | undefined;
         if (hasParams) {
           args = await this.resolveAllParams(
@@ -267,11 +279,11 @@ export class Router {
             executionContext
           );
         }
-        
+
         const result = args
-          ? await handler.apply(controllerInstance, args)
-          : await handler.call(controllerInstance);
-        
+          ? await resolvedHandler.apply(controllerInstance, args)
+          : await resolvedHandler.call(controllerInstance);
+
         return result;
       };
 
@@ -279,24 +291,24 @@ export class Router {
       let result: unknown;
       if (hasInterceptors && executionContext) {
         result = await this.executeInterceptorChain(
-          interceptorInstances,
+          interceptorResolvers,
           executionContext,
           coreHandler
         );
       } else {
         result = await coreHandler();
       }
-      
+
       // 5. Set status code if specified
       if (statusCode) reply.status(statusCode);
-      
+
       return result;
     };
 
     // Unified route handler - wraps execution in request scope for request-scoped DI
-    const routeHandler: CompiledHandler = async (request, reply) => {
-      return requestScopeStorage.runAsync(() => executeHandler(request, reply));
-    };
+    const routeHandler: CompiledHandler = shouldUseRequestScope
+      ? async (request, reply) => requestScopeStorage.runAsync(() => executeHandler(request, reply))
+      : executeHandler;
 
     // Register with Fastify
     const method = route.method.toLowerCase() as 'get' | 'post' | 'put' | 'delete' | 'patch' | 'options' | 'head';
@@ -336,32 +348,32 @@ export class Router {
         return key
           ? (ctx) => (ctx.body as Record<string, unknown>)?.[key]
           : (ctx) => ctx.body;
-      
+
       case ParamType.QUERY:
         return key
           ? (ctx) => ctx.query[key]
           : (ctx) => ctx.query;
-      
+
       case ParamType.PARAM:
         return key
           ? (ctx) => ctx.params[key]
           : (ctx) => ctx.params;
-      
+
       case ParamType.HEADERS:
         const headerKey = key?.toLowerCase();
         return headerKey
           ? (ctx) => ctx.request.headers[headerKey]
           : (ctx) => ctx.request.headers;
-      
+
       case ParamType.REQUEST:
         return (ctx) => ctx.request;
-      
+
       case ParamType.REPLY:
         return (ctx) => ctx.reply;
-      
+
       case ParamType.CONTEXT:
         return (ctx) => ctx;
-      
+
       default:
         return () => undefined;
     }
@@ -433,46 +445,59 @@ export class Router {
   /**
    * OPTIMIZATION: Pre-resolve guard instances at route registration
    */
-  private resolveGuardInstances(guards: GuardClass[]): CanActivate[] {
+  private resolveGuardInstances(guards: GuardClass[]): Array<InstanceResolver<CanActivate>> {
     return guards.map(GuardClass => {
-      // Check cache first
-      let instance = this.guardCache.get(GuardClass);
-      if (instance) return instance;
+      const scope = this.container.getProviderScope(GuardClass) ?? 'singleton';
 
-      // Resolve from container
-      try {
-        instance = this.container.resolve(GuardClass) as CanActivate;
-      } catch (error) {
-        throw new Error(
-          `Failed to resolve guard ${GuardClass.name}. ` +
-          `Make sure it is decorated with @Injectable(). ` +
-          `Original error: ${error instanceof Error ? error.message : String(error)}`
-        );
+      if (scope === 'singleton') {
+        let instance = this.guardCache.get(GuardClass);
+        if (!instance) {
+          instance = this.resolveGuardInstance(GuardClass);
+          this.guardCache.set(GuardClass, instance);
+        }
+
+        return () => instance as CanActivate;
       }
 
-      // Verify interface
-      if (typeof instance.canActivate !== 'function') {
-        throw new Error(
-          `${GuardClass.name} does not implement CanActivate interface. ` +
-          `The guard must have a canActivate(context: ExecutionContext) method.`
-        );
-      }
-
-      // Cache for future use
-      this.guardCache.set(GuardClass, instance);
-      return instance;
+      return () => this.resolveGuardInstance(GuardClass);
     });
+  }
+
+  /**
+   * Resolve and validate a single guard instance.
+   */
+  private resolveGuardInstance(GuardClass: GuardClass): CanActivate {
+    let instance: CanActivate;
+
+    try {
+      instance = this.container.resolve(GuardClass) as CanActivate;
+    } catch (error) {
+      throw new Error(
+        `Failed to resolve guard ${GuardClass.name}. ` +
+        `Make sure it is decorated with @Injectable(). ` +
+        `Original error: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+
+    if (typeof instance.canActivate !== 'function') {
+      throw new Error(
+        `${GuardClass.name} does not implement CanActivate interface. ` +
+        `The guard must have a canActivate(context: ExecutionContext) method.`
+      );
+    }
+
+    return instance;
   }
 
   /**
    * OPTIMIZATION: Execute guards using pre-resolved instances
    */
   private async executeGuardsOptimized(
-    guardInstances: CanActivate[],
+    guardResolvers: Array<InstanceResolver<CanActivate>>,
     context: ExecutionContextImpl
   ): Promise<void> {
-    for (let i = 0; i < guardInstances.length; i++) {
-      const result = await guardInstances[i].canActivate(context);
+    for (let i = 0; i < guardResolvers.length; i++) {
+      const result = await guardResolvers[i]().canActivate(context);
       if (result !== true) {
         throw new ForbiddenException(
           `Access denied by guard`
@@ -484,35 +509,48 @@ export class Router {
   /**
    * OPTIMIZATION: Pre-resolve middleware instances at route registration
    */
-  private resolveMiddlewareInstances(middleware: MiddlewareClass[]): RiktaMiddleware[] {
+  private resolveMiddlewareInstances(middleware: MiddlewareClass[]): Array<InstanceResolver<RiktaMiddleware>> {
     return middleware.map(MiddlewareClass => {
-      // Check cache first
-      let instance = this.middlewareCache.get(MiddlewareClass);
-      if (instance) return instance;
+      const scope = this.container.getProviderScope(MiddlewareClass) ?? 'singleton';
 
-      // Resolve from container
-      try {
-        instance = this.container.resolve(MiddlewareClass) as RiktaMiddleware;
-      } catch (error) {
-        throw new Error(
-          `Failed to resolve middleware ${MiddlewareClass.name}. ` +
-          `Make sure it is decorated with @Injectable(). ` +
-          `Original error: ${error instanceof Error ? error.message : String(error)}`
-        );
+      if (scope === 'singleton') {
+        let instance = this.middlewareCache.get(MiddlewareClass);
+        if (!instance) {
+          instance = this.resolveMiddlewareInstance(MiddlewareClass);
+          this.middlewareCache.set(MiddlewareClass, instance);
+        }
+
+        return () => instance as RiktaMiddleware;
       }
 
-      // Verify interface
-      if (typeof instance.use !== 'function') {
-        throw new Error(
-          `${MiddlewareClass.name} does not implement RiktaMiddleware interface. ` +
-          `The middleware must have a use(req, res, next) method.`
-        );
-      }
-
-      // Cache for future use
-      this.middlewareCache.set(MiddlewareClass, instance);
-      return instance;
+      return () => this.resolveMiddlewareInstance(MiddlewareClass);
     });
+  }
+
+  /**
+   * Resolve and validate a single middleware instance.
+   */
+  private resolveMiddlewareInstance(MiddlewareClass: MiddlewareClass): RiktaMiddleware {
+    let instance: RiktaMiddleware;
+
+    try {
+      instance = this.container.resolve(MiddlewareClass) as RiktaMiddleware;
+    } catch (error) {
+      throw new Error(
+        `Failed to resolve middleware ${MiddlewareClass.name}. ` +
+        `Make sure it is decorated with @Injectable(). ` +
+        `Original error: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+
+    if (typeof instance.use !== 'function') {
+      throw new Error(
+        `${MiddlewareClass.name} does not implement RiktaMiddleware interface. ` +
+        `The middleware must have a use(req, res, next) method.`
+      );
+    }
+
+    return instance;
   }
 
   /**
@@ -520,15 +558,15 @@ export class Router {
    * Each middleware must call next() to continue
    */
   private async executeMiddlewareChain(
-    middlewareInstances: RiktaMiddleware[],
+    middlewareResolvers: Array<InstanceResolver<RiktaMiddleware>>,
     request: FastifyRequest,
     reply: FastifyReply
   ): Promise<void> {
     let index = 0;
 
     const next = async (): Promise<void> => {
-      if (index < middlewareInstances.length) {
-        const middleware = middlewareInstances[index++];
+      if (index < middlewareResolvers.length) {
+        const middleware = middlewareResolvers[index++]();
         await middleware.use(request, reply, next);
       }
     };
@@ -539,35 +577,48 @@ export class Router {
   /**
    * OPTIMIZATION: Pre-resolve interceptor instances at route registration
    */
-  private resolveInterceptorInstances(interceptors: InterceptorClass[]): Interceptor[] {
+  private resolveInterceptorInstances(interceptors: InterceptorClass[]): Array<InstanceResolver<Interceptor>> {
     return interceptors.map(InterceptorClass => {
-      // Check cache first
-      let instance = this.interceptorCache.get(InterceptorClass);
-      if (instance) return instance;
+      const scope = this.container.getProviderScope(InterceptorClass) ?? 'singleton';
 
-      // Resolve from container
-      try {
-        instance = this.container.resolve(InterceptorClass) as Interceptor;
-      } catch (error) {
-        throw new Error(
-          `Failed to resolve interceptor ${InterceptorClass.name}. ` +
-          `Make sure it is decorated with @Injectable(). ` +
-          `Original error: ${error instanceof Error ? error.message : String(error)}`
-        );
+      if (scope === 'singleton') {
+        let instance = this.interceptorCache.get(InterceptorClass);
+        if (!instance) {
+          instance = this.resolveInterceptorInstance(InterceptorClass);
+          this.interceptorCache.set(InterceptorClass, instance);
+        }
+
+        return () => instance as Interceptor;
       }
 
-      // Verify interface
-      if (typeof instance.intercept !== 'function') {
-        throw new Error(
-          `${InterceptorClass.name} does not implement Interceptor interface. ` +
-          `The interceptor must have an intercept(context, next) method.`
-        );
-      }
-
-      // Cache for future use
-      this.interceptorCache.set(InterceptorClass, instance);
-      return instance;
+      return () => this.resolveInterceptorInstance(InterceptorClass);
     });
+  }
+
+  /**
+   * Resolve and validate a single interceptor instance.
+   */
+  private resolveInterceptorInstance(InterceptorClass: InterceptorClass): Interceptor {
+    let instance: Interceptor;
+
+    try {
+      instance = this.container.resolve(InterceptorClass) as Interceptor;
+    } catch (error) {
+      throw new Error(
+        `Failed to resolve interceptor ${InterceptorClass.name}. ` +
+        `Make sure it is decorated with @Injectable(). ` +
+        `Original error: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+
+    if (typeof instance.intercept !== 'function') {
+      throw new Error(
+        `${InterceptorClass.name} does not implement Interceptor interface. ` +
+        `The interceptor must have an intercept(context, next) method.`
+      );
+    }
+
+    return instance;
   }
 
   /**
@@ -575,7 +626,7 @@ export class Router {
    * Each interceptor wraps around the next, creating an onion-like execution
    */
   private async executeInterceptorChain(
-    interceptorInstances: Interceptor[],
+    interceptorResolvers: Array<InstanceResolver<Interceptor>>,
     context: ExecutionContext,
     coreHandler: () => Promise<unknown>
   ): Promise<unknown> {
@@ -584,10 +635,10 @@ export class Router {
     // First interceptor is the outermost wrapper
     let handler = coreHandler;
 
-    for (let i = interceptorInstances.length - 1; i >= 0; i--) {
-      const interceptor = interceptorInstances[i];
+    for (let i = interceptorResolvers.length - 1; i >= 0; i--) {
+      const interceptor = interceptorResolvers[i]();
       const nextHandler = handler;
-      
+
       handler = () => {
         const callHandler: CallHandler = {
           handle: () => nextHandler()
@@ -606,7 +657,7 @@ export class Router {
     const parts = [this.globalPrefix, controllerPrefix, routePath]
       .filter(Boolean)
       .join('');
-    
+
     // Normalize multiple slashes
     return parts.replace(/\/+/g, '/') || '/';
   }

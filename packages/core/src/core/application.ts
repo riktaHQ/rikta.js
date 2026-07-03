@@ -2,22 +2,22 @@ import 'reflect-metadata';
 import Fastify, { FastifyInstance } from 'fastify';
 import { Container } from './container/container.js';
 import { Router } from './router/router.js';
-import { registry } from './registry.js';
+import { Registry } from './registry.js';
 import { discoverModules, getCallerDirectory } from './discovery.js';
 import { ProviderMetadata } from './decorators/provider.decorator.js';
 import { EventBus } from './lifecycle/event-bus.js';
 import { OnEventMetadata, ON_EVENT_METADATA } from './lifecycle/on.decorator.js';
-import { 
+import {
   OnProviderInit,
   OnProviderDestroy,
   OnApplicationListen,
-  OnApplicationShutdown 
+  OnApplicationShutdown
 } from './lifecycle/interfaces.js';
 import { Constructor, RiktaConfig, RiktaApplication, InjectableOptions } from './types.js';
 import { DEFAULT_CONFIG, PROVIDER_METADATA, INJECTABLE_METADATA } from './constants.js';
-import { 
-  GlobalExceptionFilter, 
-  ExceptionFilter, 
+import {
+  GlobalExceptionFilter,
+  ExceptionFilter,
   createExceptionHandler,
   getCatchMetadata
 } from './exceptions/index.js';
@@ -56,26 +56,34 @@ export class RiktaFactory {
     // Load .env files FIRST, before anything else
     // This ensures environment variables are available immediately
     loadEnvFiles();
-    
+
     const silent = config.silent ?? false;
     if (!silent) console.log('\n🚀 Rikta Framework Starting...\n');
     const callerDir = getCallerDirectory();
     let discoveredFiles: string[] = [];
-    
+
     // Auto-discovery: scan for controllers and services
     if (!config.controllers && config.autowired !== false) {
-      const patterns = Array.isArray(config.autowired) && config.autowired.length > 0 
-        ? config.autowired 
-        : ['./**'];
-      discoveredFiles = await discoverModules({
-        patterns,
+      const discoveryOptions = {
         cwd: callerDir,
         strict: config.strictDiscovery ?? false,
         onImportError: config.onDiscoveryError,
-      });
+      } as {
+        patterns?: string[];
+        cwd: string;
+        strict: boolean;
+        onImportError?: (filePath: string, error: Error) => void;
+      };
+
+      if (Array.isArray(config.autowired) && config.autowired.length > 0) {
+        discoveryOptions.patterns = config.autowired;
+      }
+
+      discoveredFiles = await discoverModules(discoveryOptions);
     }
-    
-    const app = new RiktaApplicationImpl(config);
+
+    const appRegistry = Registry.getInstance().clone();
+    const app = new RiktaApplicationImpl(config, appRegistry);
     await app.init(discoveredFiles);
     return app;
   }
@@ -87,6 +95,7 @@ export class RiktaFactory {
 class RiktaApplicationImpl implements RiktaApplication {
   readonly server: FastifyInstance;
   private readonly container: Container;
+  private readonly registry: Registry;
   private readonly config: Required<Omit<RiktaConfig, 'controllers' | 'providers' | 'autowired' | 'exceptionFilter' | 'exceptionFilters' | 'strictDiscovery' | 'onDiscoveryError'>> & Pick<RiktaConfig, 'controllers' | 'providers' | 'exceptionFilter' | 'exceptionFilters'> & { silent: boolean };
   private readonly router: Router;
   private readonly events: EventBus;
@@ -96,8 +105,9 @@ class RiktaApplicationImpl implements RiktaApplication {
   private isListening = false;
   private address = '';
 
-  constructor(config: RiktaConfig) {
+  constructor(config: RiktaConfig, registry: Registry) {
     const silent = config.silent ?? false;
+    this.registry = registry;
     this.config = {
       port: config.port ?? DEFAULT_CONFIG.port,
       host: config.host ?? DEFAULT_CONFIG.host,
@@ -112,13 +122,13 @@ class RiktaApplicationImpl implements RiktaApplication {
     };
 
     this.server = Fastify({ logger: this.config.logger });
-    this.container = Container.getInstance();
+    this.container = Container.getInstance().clone(this.registry);
     this.router = new Router(this.server, this.container, this.config.prefix);
-    
+
     // Create and register EventBus
     this.events = new EventBus();
     this.container.registerInstance(EventBus, this.events);
-    
+
     // Setup global exception handler
     this.setupExceptionHandler();
   }
@@ -140,7 +150,7 @@ class RiktaApplicationImpl implements RiktaApplication {
     for (const FilterClass of customFilters) {
       const metadata = getCatchMetadata(FilterClass);
       const filterInstance = this.container.resolve(FilterClass) as ExceptionFilter;
-      
+
       if (metadata && metadata.exceptions.length > 0) {
         // Register for specific exception types
         for (const ExceptionType of metadata.exceptions) {
@@ -163,7 +173,7 @@ class RiktaApplicationImpl implements RiktaApplication {
    */
   async init(discoveredFiles: string[] = []): Promise<void> {
     // Note: .env files are already loaded in create() before this point
-    
+
     // Emit discovery event
     await this.events.emit('app:discovery', { files: discoveredFiles });
 
@@ -172,13 +182,13 @@ class RiktaApplicationImpl implements RiktaApplication {
 
     // 2. Process @Provider classes
     await this.processCustomProviders();
-    await this.events.emit('app:providers', { 
-      count: registry.getCustomProviders().length 
+    await this.events.emit('app:providers', {
+      count: this.registry.getCustomProviders().length
     });
 
     // 3. Get and sort providers by priority
     const providers = this.getSortedProviders();
-    
+
     // 3. Register additional explicit providers
     const additionalProviders = this.config.providers ?? [];
     for (const provider of additionalProviders) {
@@ -191,7 +201,7 @@ class RiktaApplicationImpl implements RiktaApplication {
     }
 
     // 5. Register routes
-    const controllers = this.config.controllers ?? registry.getControllers();
+    const controllers = this.config.controllers ?? this.registry.getControllers();
     if (!this.config.silent) console.log('📡 Registering routes:');
     for (const controller of controllers) {
       this.router.registerController(controller, this.config.silent);
@@ -200,8 +210,8 @@ class RiktaApplicationImpl implements RiktaApplication {
 
     // 6. Call onApplicationBootstrap hooks
     await this.callHook('onApplicationBootstrap');
-    await this.events.emit('app:bootstrap', { 
-      providerCount: this.initializedProviders.length 
+    await this.events.emit('app:bootstrap', {
+      providerCount: this.initializedProviders.length
     });
 
     if (!this.config.silent) console.log('\n✅ Rikta is ready\n');
@@ -211,7 +221,7 @@ class RiktaApplicationImpl implements RiktaApplication {
    * Process all config providers and register them in the container
    */
   private async processConfigProviders(): Promise<void> {
-    const configProviders = registry.getConfigProviderRegistrations();
+    const configProviders = this.registry.getConfigProviderRegistrations();
     if (configProviders.length === 0) return;
 
     for (const { token, providerClass } of configProviders) {
@@ -228,19 +238,19 @@ class RiktaApplicationImpl implements RiktaApplication {
    * Process all @Provider decorated classes
    */
   private async processCustomProviders(): Promise<void> {
-    const customProviders = registry.getCustomProviders();
+    const customProviders = this.registry.getCustomProviders();
     if (customProviders.length === 0) return;
 
     for (const ProviderClass of customProviders) {
       const metadata: ProviderMetadata | undefined = Reflect.getMetadata(
-        PROVIDER_METADATA, 
+        PROVIDER_METADATA,
         ProviderClass
       );
 
       if (!metadata) continue;
 
-      const providerInstance = this.container.resolve(ProviderClass) as { 
-        provide: () => unknown | Promise<unknown> 
+      const providerInstance = this.container.resolve(ProviderClass) as {
+        provide: () => unknown | Promise<unknown>
       };
 
       const value = await providerInstance.provide();
@@ -252,9 +262,10 @@ class RiktaApplicationImpl implements RiktaApplication {
    * Get providers sorted by priority (higher = first)
    */
   private getSortedProviders(): Array<{ target: Constructor; priority: number }> {
-    const providers = registry.getProviders();
-    
+    const providers = this.registry.getProviders();
+
     return providers
+      .filter(target => this.shouldInitializeProvider(target))
       .map(target => ({
         target,
         priority: this.getProviderPriority(target),
@@ -263,10 +274,18 @@ class RiktaApplicationImpl implements RiktaApplication {
   }
 
   /**
+   * Only singleton providers participate in application bootstrap lifecycle.
+   */
+  private shouldInitializeProvider(target: Constructor): boolean {
+    const scope = this.container.getProviderScope(target);
+    return scope === undefined || scope === 'singleton';
+  }
+
+  /**
    * Get priority from @Injectable() metadata
    */
   private getProviderPriority(target: Constructor): number {
-    const options: InjectableOptions | undefined = 
+    const options: InjectableOptions | undefined =
       Reflect.getMetadata(INJECTABLE_METADATA, target);
     return options?.priority ?? 0;
   }
@@ -277,18 +296,18 @@ class RiktaApplicationImpl implements RiktaApplication {
   private async initializeProvider(target: Constructor, priority: number): Promise<void> {
     const instance = this.container.resolve(target);
     const name = target.name;
-    
+
     // Track initialized provider
     this.initializedProviders.push({ instance, priority, name });
-    
+
     // Call onProviderInit hook
     if (this.hasHook(instance, 'onProviderInit')) {
       await (instance as OnProviderInit).onProviderInit();
     }
-    
+
     // Emit provider:init event
     await this.events.emit('provider:init', { provider: target, name, priority });
-    
+
     // Register @On() event listeners from this instance
     this.registerEventListeners(target, instance);
   }
@@ -298,9 +317,9 @@ class RiktaApplicationImpl implements RiktaApplication {
    * Tracks listeners by provider name for cleanup during shutdown
    */
   private registerEventListeners(target: Constructor, instance: unknown): void {
-    const metadata: OnEventMetadata[] = 
+    const metadata: OnEventMetadata[] =
       Reflect.getMetadata(ON_EVENT_METADATA, target) ?? [];
-    
+
     for (const { event, methodName } of metadata) {
       const method = (instance as Record<string, Function>)[methodName];
       if (typeof method === 'function') {
@@ -314,6 +333,10 @@ class RiktaApplicationImpl implements RiktaApplication {
    * Register a provider in the container
    */
   private registerProvider(provider: Constructor): void {
+    if (!this.shouldInitializeProvider(provider)) {
+      return;
+    }
+
     const instance = this.container.resolve(provider);
     const priority = this.getProviderPriority(provider);
     this.initializedProviders.push({ instance, priority, name: provider.name });
@@ -365,9 +388,9 @@ class RiktaApplicationImpl implements RiktaApplication {
     }
 
     // Emit app:listen event
-    await this.events.emit('app:listen', { 
-      address: this.address, 
-      port: this.config.port 
+    await this.events.emit('app:listen', {
+      address: this.address,
+      port: this.config.port
     });
 
     return this.address;
@@ -382,18 +405,18 @@ class RiktaApplicationImpl implements RiktaApplication {
 
     // Call hooks in REVERSE priority order
     const reversed = [...this.initializedProviders].reverse();
-    
+
     for (const { instance, name } of reversed) {
       // Call onApplicationShutdown
       if (this.hasHook(instance, 'onApplicationShutdown')) {
         await (instance as OnApplicationShutdown).onApplicationShutdown(signal);
       }
-      
+
       // Call onProviderDestroy
       if (this.hasHook(instance, 'onProviderDestroy')) {
         await (instance as OnProviderDestroy).onProviderDestroy();
       }
-      
+
       // Cleanup event listeners registered by this provider
       this.events.removeByOwner(name);
     }
@@ -403,10 +426,10 @@ class RiktaApplicationImpl implements RiktaApplication {
     this.isListening = false;
 
     // Emit app:destroy event
-    await this.events.emit('app:destroy', { 
-      uptime: Date.now() - this.startTime 
+    await this.events.emit('app:destroy', {
+      uptime: Date.now() - this.startTime
     });
-    
+
     // Final cleanup - clear all remaining listeners
     this.events.clear();
 

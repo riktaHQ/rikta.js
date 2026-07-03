@@ -67,6 +67,11 @@ class RequestLogger {}
 class RequestContext {}
 ```
 
+Request-scoped providers can be injected into singleton controllers, guards,
+middleware, and interceptors. Rikta injects a lazy proxy and resolves the real
+instance from the current HTTP request. Accessing that dependency outside a
+request handler throws.
+
 ## Strict Discovery Mode
 
 Enable strict discovery to catch import errors early:

@@ -36,7 +36,7 @@ const app = await Rikta.create({
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `autowired` | `string[] \| false` | `['./**']` | Glob patterns for auto-discovery |
+| `autowired` | `string[] \| false` | smart source-root patterns | Glob patterns for auto-discovery |
 | `controllers` | `Constructor[]` | `undefined` | Explicit list of controllers |
 | `providers` | `Constructor[]` | `undefined` | Additional providers to register |
 | `strictDiscovery` | `boolean` | `false` | Throw on import errors during discovery |
@@ -54,6 +54,11 @@ const app = await Rikta.create({
 ### `autowired`
 
 Controls how Rikta discovers controllers and services.
+
+If you do not pass `autowired`, Rikta first looks in common source roots such as
+`./src`, `./app`, `./server`, `./controllers`, `./services`, and `./providers`.
+Only when none of those directories exist does it fall back to a recursive
+project scan.
 
 ```typescript
 // Scan specific directories

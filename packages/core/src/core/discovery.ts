@@ -17,6 +17,25 @@ const DEFAULT_IGNORE_PATTERNS = [
 ];
 
 /**
+ * Common project roots used for auto-discovery.
+ * Keeping the default scan narrow avoids traversing the entire repository
+ * in the typical `src/`-based application layout.
+ */
+const DEFAULT_SOURCE_ROOTS = [
+  'src',
+  'app',
+  'server',
+  'api',
+  'lib',
+  'controllers',
+  'services',
+  'providers',
+];
+
+const DEFAULT_FALLBACK_PATTERN = './**/*.{ts,js}';
+const TOP_LEVEL_CODE_PATTERN = './*.{ts,js}';
+
+/**
  * Get the entry point directory of the application.
  * 
  * Uses process.argv[1] which contains the path to the main script being executed.
@@ -27,15 +46,15 @@ const DEFAULT_IGNORE_PATTERNS = [
  */
 function getEntryPointDirectory(): string {
   const mainScript = process.argv[1];
-  
+
   if (mainScript) {
     // Handle file:// URLs (ESM) and regular paths
-    const filePath = mainScript.startsWith('file://') 
-      ? new URL(mainScript).pathname 
+    const filePath = mainScript.startsWith('file://')
+      ? new URL(mainScript).pathname
       : mainScript;
     return path.dirname(filePath);
   }
-  
+
   // Fallback to current working directory
   return process.cwd();
 }
@@ -73,6 +92,36 @@ async function containsRiktaDecorators(filePath: string): Promise<boolean> {
 }
 
 /**
+ * Compute smart default discovery patterns for the given application root.
+ * If a common source root exists, discovery stays scoped to that root and
+ * top-level code files. Otherwise it falls back to a recursive project scan.
+ */
+async function getDefaultDiscoveryPatterns(baseDir: string): Promise<string[]> {
+  try {
+    const entries = await fs.readdir(baseDir, { withFileTypes: true });
+    const directoryNames = new Set(
+      entries.filter(entry => entry.isDirectory()).map(entry => entry.name)
+    );
+
+    const patterns = DEFAULT_SOURCE_ROOTS
+      .filter(root => directoryNames.has(root))
+      .map(root => `./${root}`);
+
+    const hasTopLevelCodeFiles = entries.some(
+      entry => entry.isFile() && /\.(?:ts|js)$/.test(entry.name) && !entry.name.endsWith('.d.ts')
+    );
+
+    if (hasTopLevelCodeFiles) {
+      patterns.push(TOP_LEVEL_CODE_PATTERN);
+    }
+
+    return patterns.length > 0 ? patterns : [DEFAULT_FALLBACK_PATTERN];
+  } catch {
+    return [DEFAULT_FALLBACK_PATTERN];
+  }
+}
+
+/**
  * Discover and import modules matching the given patterns
  * 
  * Only imports files that contain @Controller, @Injectable, or @Provider decorators.
@@ -103,7 +152,7 @@ async function containsRiktaDecorators(filePath: string): Promise<boolean> {
  * ```
  */
 export async function discoverModules(
-  optionsOrPatterns: DiscoveryOptions | string[] = ['./**/*.{ts,js}'],
+  optionsOrPatterns: DiscoveryOptions | string[] = [DEFAULT_FALLBACK_PATTERN],
   cwd?: string
 ): Promise<string[]> {
   // Normalize input to DiscoveryOptions
@@ -111,25 +160,26 @@ export async function discoverModules(
     ? { patterns: optionsOrPatterns, cwd }
     : optionsOrPatterns;
 
-  const patterns = options.patterns ?? ['./**/*.{ts,js}'];
   const strict = options.strict ?? false;
   const onImportError = options.onImportError;
-  
+
   // If no cwd provided, use the entry point directory (where the main script is)
   // This is crucial when rikta-core is installed in node_modules
   const baseDir = options.cwd ?? cwd ?? getEntryPointDirectory();
-  
+
   // Resolve the base directory to absolute if needed
-  const absoluteBaseDir = path.isAbsolute(baseDir) 
-    ? baseDir 
+  const absoluteBaseDir = path.isAbsolute(baseDir)
+    ? baseDir
     : path.resolve(process.cwd(), baseDir);
 
+  const patterns = options.patterns ?? await getDefaultDiscoveryPatterns(absoluteBaseDir);
+
   // Normalize patterns to include file extensions if not present
-  const normalizedPatterns = patterns.map(pattern => {
+  const normalizedPatterns = [...new Set(patterns.map(pattern => {
     // Resolve the pattern if it's an absolute path
     // For absolute paths, we need to make them relative to cwd for fast-glob
     let normalizedPattern = pattern;
-    
+
     if (path.isAbsolute(pattern)) {
       // Convert absolute path to relative from baseDir
       normalizedPattern = path.relative(absoluteBaseDir, pattern);
@@ -137,16 +187,16 @@ export async function discoverModules(
         normalizedPattern = './' + normalizedPattern;
       }
     }
-    
-    // If pattern already has extension, use as-is
-    if (/\.\w+$/.test(normalizedPattern) || normalizedPattern.endsWith('*')) {
+
+    // If the caller already provided a glob or an explicit extension, use it as-is
+    if (/\.\w+$/.test(normalizedPattern) || /[*?[\]{}]/.test(normalizedPattern)) {
       return normalizedPattern;
     }
     // Add file extension pattern
-    return normalizedPattern.endsWith('/') 
-      ? `${normalizedPattern}**/*.{ts,js}` 
+    return normalizedPattern.endsWith('/')
+      ? `${normalizedPattern}**/*.{ts,js}`
       : `${normalizedPattern}/**/*.{ts,js}`;
-  });
+  }))];
 
   // Find all matching files
   const files = await fg(normalizedPatterns, {
@@ -156,9 +206,11 @@ export async function discoverModules(
     onlyFiles: true,
   });
 
+  const uniqueFiles = [...new Set(files)].sort();
+
   // Filter files that contain Rikta decorators (parallelized for performance)
   const decoratorChecks = await Promise.all(
-    files.map(async file => ({ file, hasDecorators: await containsRiktaDecorators(file) }))
+    uniqueFiles.map(async file => ({ file, hasDecorators: await containsRiktaDecorators(file) }))
   );
   const riktaFiles = decoratorChecks
     .filter(({ hasDecorators }) => hasDecorators)
@@ -167,7 +219,7 @@ export async function discoverModules(
   // Import only files with decorators
   const importedFiles: string[] = [];
   const failedImports: DiscoveryFailure[] = [];
-  
+
   for (const file of riktaFiles) {
     try {
       // Convert to proper import path for ESM
@@ -185,15 +237,15 @@ export async function discoverModules(
       importedFiles.push(file);
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
-      
+
       // Call error callback if provided
       onImportError?.(file, error);
-      
+
       // Log in debug mode
       if (process.env.DEBUG) {
         console.warn(`[Rikta] Failed to import ${file}:`, error.message);
       }
-      
+
       // Track failure for strict mode
       failedImports.push({ filePath: file, error });
     }

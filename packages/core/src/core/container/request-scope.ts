@@ -18,11 +18,11 @@ import { Token } from './injection-token.js';
  */
 export class RequestScopeStorage {
   private static instance: RequestScopeStorage;
-  
-  /** AsyncLocalStorage for request-scoped data */
-  private readonly asyncLocalStorage = new AsyncLocalStorage<Map<Token, unknown>>();
 
-  private constructor() {}
+  /** AsyncLocalStorage for request-scoped data */
+  private asyncLocalStorage = new AsyncLocalStorage<Map<Token, unknown>>();
+
+  private constructor() { }
 
   /**
    * Get the global RequestScopeStorage instance
@@ -38,7 +38,12 @@ export class RequestScopeStorage {
    * Reset the storage (useful for testing)
    */
   static reset(): void {
-    RequestScopeStorage.instance = new RequestScopeStorage();
+    if (!RequestScopeStorage.instance) {
+      RequestScopeStorage.instance = new RequestScopeStorage();
+      return;
+    }
+
+    RequestScopeStorage.instance.asyncLocalStorage = new AsyncLocalStorage<Map<Token, unknown>>();
   }
 
   /**

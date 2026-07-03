@@ -7,12 +7,12 @@ import { Controller } from '../src/core/decorators/controller.decorator';
 import { Get } from '../src/core/decorators/route.decorator';
 import { Injectable } from '../src/core/decorators/injectable.decorator';
 import { Autowired } from '../src/core/decorators/autowired.decorator';
-import { 
+import {
   UseGuards,
   getGuardsMetadata,
-  CanActivate, 
-  ExecutionContext, 
-  ExecutionContextImpl 
+  CanActivate,
+  ExecutionContext,
+  ExecutionContextImpl
 } from '../src/core/guards';
 import { GUARDS_METADATA } from '../src/core/constants';
 
@@ -31,7 +31,7 @@ describe('Guards', () => {
 
       @Controller('/test')
       @UseGuards(AuthGuard)
-      class TestController {}
+      class TestController { }
 
       const guards = Reflect.getMetadata(GUARDS_METADATA, TestController);
       expect(guards).toBeDefined();
@@ -48,7 +48,7 @@ describe('Guards', () => {
       class TestController {
         @Get('/')
         @UseGuards(RoleGuard)
-        getAll() {}
+        getAll() { }
       }
 
       const guards = Reflect.getMetadata(GUARDS_METADATA, TestController, 'getAll');
@@ -65,7 +65,7 @@ describe('Guards', () => {
 
       @Controller('/test')
       @UseGuards(Guard1, Guard2)
-      class TestController {}
+      class TestController { }
 
       const guards = Reflect.getMetadata(GUARDS_METADATA, TestController);
       expect(guards).toHaveLength(2);
@@ -82,7 +82,7 @@ describe('Guards', () => {
       @Controller('/test')
       @UseGuards(Guard1)
       @UseGuards(Guard2)
-      class TestController {}
+      class TestController { }
 
       const guards = Reflect.getMetadata(GUARDS_METADATA, TestController);
       expect(guards).toHaveLength(2);
@@ -94,7 +94,7 @@ describe('Guards', () => {
       @Controller('/test')
       class TestController {
         @Get('/')
-        getAll() {}
+        getAll() { }
       }
 
       const guards = getGuardsMetadata(TestController, 'getAll');
@@ -109,7 +109,7 @@ describe('Guards', () => {
       @UseGuards(AuthGuard)
       class TestController {
         @Get('/')
-        getAll() {}
+        getAll() { }
       }
 
       const guards = getGuardsMetadata(TestController, 'getAll');
@@ -125,7 +125,7 @@ describe('Guards', () => {
       class TestController {
         @Get('/')
         @UseGuards(MethodGuard)
-        getAll() {}
+        getAll() { }
       }
 
       const guards = getGuardsMetadata(TestController, 'getAll');
@@ -144,7 +144,7 @@ describe('Guards', () => {
       class TestController {
         @Get('/')
         @UseGuards(MethodGuard)
-        getAll() {}
+        getAll() { }
       }
 
       const guards = getGuardsMetadata(TestController, 'getAll');
@@ -158,8 +158,8 @@ describe('Guards', () => {
     it('should provide access to request', () => {
       const mockRequest = { headers: { authorization: 'Bearer token' } };
       const mockReply = {};
-      const mockController = class TestController {};
-      
+      const mockController = class TestController { };
+
       const context = new ExecutionContextImpl(
         mockRequest as any,
         mockReply as any,
@@ -173,8 +173,8 @@ describe('Guards', () => {
     it('should provide access to reply', () => {
       const mockRequest = {};
       const mockReply = { status: vi.fn() };
-      const mockController = class TestController {};
-      
+      const mockController = class TestController { };
+
       const context = new ExecutionContextImpl(
         mockRequest as any,
         mockReply as any,
@@ -188,8 +188,8 @@ describe('Guards', () => {
     it('should provide access to controller class', () => {
       const mockRequest = {};
       const mockReply = {};
-      const mockController = class TestController {};
-      
+      const mockController = class TestController { };
+
       const context = new ExecutionContextImpl(
         mockRequest as any,
         mockReply as any,
@@ -203,8 +203,8 @@ describe('Guards', () => {
     it('should provide access to handler name', () => {
       const mockRequest = {};
       const mockReply = {};
-      const mockController = class TestController {};
-      
+      const mockController = class TestController { };
+
       const context = new ExecutionContextImpl(
         mockRequest as any,
         mockReply as any,
@@ -229,7 +229,7 @@ describe('Guards', () => {
       const mockContext = new ExecutionContextImpl(
         {} as any,
         {} as any,
-        class {},
+        class { },
         'test'
       );
 
@@ -248,7 +248,7 @@ describe('Guards', () => {
       const mockContext = new ExecutionContextImpl(
         {} as any,
         {} as any,
-        class {},
+        class { },
         'test'
       );
 
@@ -325,17 +325,17 @@ describe('Guards', () => {
 
       @Injectable()
       class FirstGuard implements CanActivate {
-        canActivate() { 
+        canActivate() {
           executionOrder.push('first');
-          return true; 
+          return true;
         }
       }
 
       @Injectable()
       class SecondGuard implements CanActivate {
-        canActivate() { 
+        canActivate() {
           executionOrder.push('second');
-          return true; 
+          return true;
         }
       }
 
@@ -370,25 +370,25 @@ describe('Guards', () => {
 
       @Injectable()
       class PassGuard implements CanActivate {
-        canActivate() { 
+        canActivate() {
           executionOrder.push('pass');
-          return true; 
+          return true;
         }
       }
 
       @Injectable()
       class FailGuard implements CanActivate {
-        canActivate() { 
+        canActivate() {
           executionOrder.push('fail');
-          return false; 
+          return false;
         }
       }
 
       @Injectable()
       class NeverReachedGuard implements CanActivate {
-        canActivate() { 
+        canActivate() {
           executionOrder.push('never');
-          return true; 
+          return true;
         }
       }
 
@@ -422,9 +422,9 @@ describe('Guards', () => {
     it('should work with async guards', async () => {
       @Injectable()
       class AsyncAllowGuard implements CanActivate {
-        async canActivate() { 
+        async canActivate() {
           await new Promise(resolve => setTimeout(resolve, 10));
-          return true; 
+          return true;
         }
       }
 
@@ -509,22 +509,137 @@ describe('Guards', () => {
       await app.close();
     });
 
+    it('should create new transient guard instances for each request', async () => {
+      let instanceCount = 0;
+
+      @Injectable({ scope: 'transient' })
+      class TransientGuard implements CanActivate {
+        constructor() {
+          instanceCount++;
+        }
+
+        canActivate(): boolean {
+          return true;
+        }
+      }
+
+      @Controller('/transient-guard')
+      @UseGuards(TransientGuard)
+      class TransientGuardController {
+        @Get('/')
+        getData() {
+          return { ok: true };
+        }
+      }
+
+      const app = await Rikta.create({
+        controllers: [TransientGuardController],
+        logger: false,
+        silent: true,
+      });
+
+      await app.server.inject({ method: 'GET', url: '/transient-guard' });
+      await app.server.inject({ method: 'GET', url: '/transient-guard' });
+
+      expect(instanceCount).toBe(2);
+
+      await app.close();
+    });
+
+    it('should resolve request-scoped guards per request', async () => {
+      const requestIds = new Set<string>();
+
+      @Injectable({ scope: 'request' })
+      class RequestScopedGuard implements CanActivate {
+        readonly requestId = Math.random().toString(36);
+
+        canActivate(): boolean {
+          requestIds.add(this.requestId);
+          return true;
+        }
+      }
+
+      @Controller('/request-guard')
+      @UseGuards(RequestScopedGuard)
+      class RequestGuardController {
+        @Get('/')
+        getData() {
+          return { ok: true };
+        }
+      }
+
+      const app = await Rikta.create({
+        controllers: [RequestGuardController],
+        logger: false,
+        silent: true,
+      });
+
+      await app.server.inject({ method: 'GET', url: '/request-guard' });
+      await app.server.inject({ method: 'GET', url: '/request-guard' });
+
+      expect(requestIds.size).toBe(2);
+
+      await app.close();
+    });
+
+    it('should allow singleton guards to access request-scoped dependencies', async () => {
+      const requestIds = new Set<string>();
+
+      @Injectable({ scope: 'request' })
+      class GuardRequestContext {
+        readonly requestId = Math.random().toString(36);
+      }
+
+      @Injectable()
+      class RequestAwareGuard implements CanActivate {
+        @Autowired(GuardRequestContext)
+        private requestContext!: GuardRequestContext;
+
+        canActivate(): boolean {
+          requestIds.add(this.requestContext.requestId);
+          return true;
+        }
+      }
+
+      @Controller('/request-aware-guard')
+      @UseGuards(RequestAwareGuard)
+      class RequestAwareGuardController {
+        @Get('/')
+        getData() {
+          return { ok: true };
+        }
+      }
+
+      const app = await Rikta.create({
+        controllers: [RequestAwareGuardController],
+        logger: false,
+        silent: true,
+      });
+
+      await app.server.inject({ method: 'GET', url: '/request-aware-guard' });
+      await app.server.inject({ method: 'GET', url: '/request-aware-guard' });
+
+      expect(requestIds.size).toBe(2);
+
+      await app.close();
+    });
+
     it('should apply method guards after controller guards', async () => {
       const executionOrder: string[] = [];
 
       @Injectable()
       class ControllerGuard implements CanActivate {
-        canActivate() { 
+        canActivate() {
           executionOrder.push('controller');
-          return true; 
+          return true;
         }
       }
 
       @Injectable()
       class MethodGuard implements CanActivate {
-        canActivate() { 
+        canActivate() {
           executionOrder.push('method');
-          return true; 
+          return true;
         }
       }
 

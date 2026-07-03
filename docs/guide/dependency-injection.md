@@ -214,6 +214,62 @@ class ConfigService { }
 class RequestLogger { }
 ```
 
+### Request Scope
+
+```typescript
+@Injectable({ scope: 'request' })  // New instance per HTTP request
+class RequestContext {
+  readonly requestId = crypto.randomUUID();
+}
+```
+
+Request-scoped providers are reused within a single HTTP request and recreated
+for the next one.
+
+When a request-scoped provider is injected into a singleton controller, guard,
+middleware, interceptor, or service, Rikta injects a lazy proxy. The real
+instance is resolved from the current request context the first time you use it.
+That means the dependency must only be accessed during HTTP request handling.
+
+### Request-Scoped Proxy in a Singleton Service
+
+```typescript
+@Injectable({ scope: 'request' })
+class RequestContext {
+  readonly requestId = crypto.randomUUID();
+}
+
+@Injectable()
+class AuditService {
+  @Autowired()
+  private requestContext!: RequestContext;
+
+  log(message: string) {
+    console.log(`[${this.requestContext.requestId}] ${message}`);
+  }
+}
+
+@Controller('/orders')
+class OrderController {
+  @Autowired()
+  private audit!: AuditService;
+
+  @Get()
+  list() {
+    this.audit.log('Listing orders');
+    return [];
+  }
+}
+```
+
+`AuditService` is still a singleton. Rikta injects a proxy for `RequestContext`
+and resolves the real request-scoped instance only when `log()` runs during an
+HTTP request.
+
+Do not access a request-scoped dependency from a constructor, field initializer,
+or bootstrap hook such as `onProviderInit()` or `onApplicationBootstrap()`.
+Those phases run without an active request context, so the proxy will throw.
+
 ## API Reference
 
 | Method | Description |

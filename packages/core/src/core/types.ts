@@ -78,7 +78,7 @@ export type ProviderScope = 'singleton' | 'transient' | 'request';
 export interface InjectableOptions {
   /** Provider scope (default: 'singleton') */
   scope?: ProviderScope;
-  
+
   /** 
    * Initialization priority (higher = initialized first)
    * Default: 0
@@ -104,7 +104,7 @@ export interface InjectableOptions {
 export interface ExceptionFilterConfig {
   /** Include stack trace in error response (default: true in development) */
   includeStack?: boolean;
-  
+
   /** Log errors to console (default: true) */
   logErrors?: boolean;
 }
@@ -115,24 +115,26 @@ export interface ExceptionFilterConfig {
 export interface RiktaConfig {
   /** Server port (default: 3000) */
   port?: number;
-  
+
   /** Server host (default: '0.0.0.0') */
   host?: string;
-  
+
   /** Enable Fastify logging (default: true) */
   logger?: boolean | object;
-  
+
   /** Disable all framework console output (default: false) */
   silent?: boolean;
-  
+
   /** Global route prefix (default: '') */
   prefix?: string;
-  
+
   /**
    * Glob patterns for auto-discovery of controllers and services.
    * Files matching these patterns will be imported automatically.
    * 
-   * @default ['./**'] (scans current directory recursively)
+    * By default Rikta prefers common source roots such as `./src`, `./app`,
+    * `./server`, `./controllers`, `./services`, and `./providers`, then falls
+    * back to a recursive project scan only when none of them exist.
    * 
    * @example
    * ```typescript
@@ -178,20 +180,20 @@ export interface RiktaConfig {
    * ```
    */
   onDiscoveryError?: (filePath: string, error: Error) => void;
-  
+
   /**
    * Explicit list of controllers to register.
    * If not provided, all @Controller decorated classes are auto-discovered.
    */
   controllers?: Constructor[];
-  
+
   /**
    * Additional providers to register.
    * Most providers are auto-discovered via @Injectable.
    * Use this for custom providers or manual registration.
    */
   providers?: Constructor[];
-  
+
   /**
    * Exception filter configuration.
    * Controls how errors are handled and formatted.
@@ -205,7 +207,7 @@ export interface RiktaConfig {
    * ```
    */
   exceptionFilter?: ExceptionFilterConfig;
-  
+
   /**
    * Custom exception filters.
    * Filters are matched against exception types in order.
@@ -251,25 +253,25 @@ import type { EventBus } from './lifecycle/event-bus.js';
 export interface RiktaApplication {
   /** The underlying Fastify server instance */
   readonly server: FastifyInstance;
-  
+
   /** Start listening for requests */
   listen(): Promise<string>;
-  
+
   /** Gracefully close the application */
   close(): Promise<void>;
-  
+
   /** Get the server URL after listening */
   getUrl(): string;
-  
+
   /** Get the DI Container instance */
   getContainer(): Container;
-  
+
   /** Get the Router instance */
   getRouter(): Router;
-  
+
   /** Get the EventBus instance */
   getEventBus(): EventBus;
-  
+
   /** Clear all router caches (guards, middleware, and interceptors) */
   clearRouterCaches(): void;
 }

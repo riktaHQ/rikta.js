@@ -43,7 +43,11 @@ app.close()
 
 ### OnProviderInit
 
-Called after a provider is instantiated and dependencies injected:
+Called after a singleton provider is instantiated and dependencies injected.
+
+Lifecycle hooks run only for singleton providers during application bootstrap
+and shutdown. Transient and request-scoped providers are resolved on demand and
+do not receive bootstrap or shutdown hooks.
 
 ```typescript
 import { Injectable, OnProviderInit } from '@riktajs/core';
@@ -53,6 +57,19 @@ class DatabaseService implements OnProviderInit {
   async onProviderInit() {
     await this.connect();
     console.log('Database connected');
+  }
+}
+```
+
+```typescript
+@Injectable()
+class AuditService implements OnProviderInit {
+  @Autowired()
+  private requestContext!: RequestContext;
+
+  onProviderInit() {
+    // Do not read this.requestContext here.
+    // Request-scoped proxies are only usable during HTTP request handling.
   }
 }
 ```

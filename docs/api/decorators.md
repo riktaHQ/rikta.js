@@ -26,7 +26,14 @@ class UserService { }
 
 @Injectable({ scope: 'transient' })
 class RequestLogger { }
+
+@Injectable({ scope: 'request' })
+class RequestContext { }
 ```
+
+`scope: 'request'` creates one instance per HTTP request. When injected into a
+singleton component, Rikta provides a lazy proxy that resolves the real
+instance from the active request context.
 
 ### @Provider(token)
 

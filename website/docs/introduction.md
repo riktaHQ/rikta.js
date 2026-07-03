@@ -107,7 +107,7 @@ create(@Body(UserSchema) user: z.infer<typeof UserSchema>) {
 
 ### 🔌 Powerful Dependency Injection
 
-Support for Singleton (default) and Transient scopes, factory providers, and value tokens.
+Support for Singleton (default), Transient, and Request scopes, factory providers, and value tokens.
 
 ```typescript
 @Injectable()

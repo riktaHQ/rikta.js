@@ -30,7 +30,7 @@ Middleware always executes **AFTER** guards and **BEFORE** the route handler. If
 
 ## Creating Middleware
 
-A middleware implements the `RiktaMiddleware` interface and is decorated with `@Middleware()`:
+A middleware implements the `RiktaMiddleware` interface and is decorated with `@Middleware()`, which auto-registers it as a singleton injectable:
 
 ```typescript
 import { Middleware, RiktaMiddleware, NextFunction } from '@riktajs/core';
@@ -52,6 +52,10 @@ export class LoggerMiddleware implements RiktaMiddleware {
   }
 }
 ```
+
+If you need transient or request scope, override the registration with
+`@Injectable({ scope: 'transient' | 'request' })` or register the middleware in
+the container before calling `Rikta.create()`.
 
 :::warning Important
 You **MUST** call `next()` to continue the request pipeline. If you don't call `next()`, the request will hang indefinitely.

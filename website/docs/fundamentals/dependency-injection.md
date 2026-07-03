@@ -28,7 +28,7 @@ At the heart of Rikta's DI system is the **Container**. The container is respons
 import { container } from '@riktajs/core';
 
 // The container is available globally
-container.registerClass(MyService, MyService);
+container.register(MyService);
 container.resolve(MyService); // Returns singleton instance
 ```
 
@@ -146,6 +146,7 @@ Request scope uses Node.js `AsyncLocalStorage` to maintain a request-specific co
 - The same instance is shared across all services within that request
 - Instances are automatically cleaned up when the request completes
 - Works correctly with async/await operations
+- When injected into singleton components, Rikta uses a lazy proxy that resolves the real instance from the active request context
 :::
 
 :::tip Use Cases for Request Scope
@@ -153,6 +154,47 @@ Request scope uses Node.js `AsyncLocalStorage` to maintain a request-specific co
 - **User context**: Store authenticated user info accessible everywhere
 - **Transaction management**: Share a database transaction across services
 - **Performance tracking**: Measure timing across the request lifecycle
+:::
+
+### Request-Scoped Proxy in a Singleton Service
+
+```typescript
+@Injectable({ scope: 'request' })
+export class RequestContext {
+  public requestId = crypto.randomUUID();
+}
+
+@Injectable()
+export class AuditService {
+  @Autowired()
+  private requestContext!: RequestContext;
+
+  log(message: string) {
+    console.log(`[${this.requestContext.requestId}] ${message}`);
+  }
+}
+
+@Controller('/orders')
+export class OrderController {
+  @Autowired()
+  private audit!: AuditService;
+
+  @Get('/')
+  listOrders() {
+    this.audit.log('Listing orders');
+    return [];
+  }
+}
+```
+
+`AuditService` remains a singleton. Rikta injects a lazy proxy for
+`RequestContext` and resolves the real request-scoped instance only when
+`listOrders()` runs inside an HTTP request.
+
+:::warning Bootstrap and Constructors
+Do not access a request-scoped dependency from a constructor, field initializer,
+`onProviderInit()`, or `onApplicationBootstrap()`. Those phases run outside any
+request context, so the proxy will throw.
 :::
 
 ## Injection Tokens

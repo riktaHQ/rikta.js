@@ -27,6 +27,15 @@ Measures single-request latency with no concurrent load.
 npm run bench:requests
 ```
 
+### Request Scope Path (`npm run bench:request-scope`)
+
+Measures the overhead of enabling request scope and of resolving a request-scoped
+dependency through the lazy proxy path in singleton components.
+
+```bash
+npm run bench:request-scope
+```
+
 ### Load Testing (`npm run bench:autocannon`)
 
 High-concurrency throughput testing using Autocannon.
@@ -99,6 +108,15 @@ benchmarks/
 2. Warm up with 10 requests each
 3. Measure 100 sequential requests
 4. Calculate median latency
+
+### Request Scope Path
+1. Start one Rikta app without any request-scoped provider
+2. Start one Rikta app with a request-scoped provider registered
+3. Interleave requests across:
+  - plain Rikta route without request scope
+  - plain route inside a request-enabled app
+  - route that resolves a request-scoped dependency through a lazy proxy
+4. Compare the per-request overhead of each path
 
 ### Load Testing
 1. Concurrent connections: 10-100

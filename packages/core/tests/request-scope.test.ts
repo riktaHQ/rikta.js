@@ -17,17 +17,17 @@ describe('Request Scope', () => {
   describe('RequestScopeStorage', () => {
     it('should detect when inside request scope', () => {
       expect(requestScopeStorage.isInRequestScope()).toBe(false);
-      
+
       requestScopeStorage.run(() => {
         expect(requestScopeStorage.isInRequestScope()).toBe(true);
       });
-      
+
       expect(requestScopeStorage.isInRequestScope()).toBe(false);
     });
 
     it('should store and retrieve values within request scope', () => {
       const token = 'test-token';
-      
+
       requestScopeStorage.run(() => {
         requestScopeStorage.set(token, 'test-value');
         expect(requestScopeStorage.get(token)).toBe('test-value');
@@ -74,7 +74,7 @@ describe('Request Scope', () => {
       class RequestContext {
         readonly id = Math.random();
       }
-      
+
       const container = Container.getInstance();
       container.register(RequestContext, { scope: 'request' });
 
@@ -106,7 +106,7 @@ describe('Request Scope', () => {
 
       const container = Container.getInstance();
       container.register(RequestOnlyService, { scope: 'request' });
-      
+
       expect(() => {
         container.resolve(RequestOnlyService);
       }).toThrow('Cannot resolve request-scoped provider');
@@ -116,10 +116,10 @@ describe('Request Scope', () => {
       class SingletonService {
         readonly id = Math.random();
       }
-      
+
       const container = Container.getInstance();
       container.register(SingletonService, { scope: 'singleton' });
-      
+
       // Resolve outside request scope
       const outsideInstance = container.resolve(SingletonService);
 
@@ -137,7 +137,7 @@ describe('Request Scope', () => {
       class TransientService {
         readonly id = Math.random();
       }
-      
+
       const container = Container.getInstance();
       container.register(TransientService, { scope: 'transient' });
 
@@ -155,8 +155,8 @@ describe('Request Scope', () => {
       }
 
       class RequestLogger {
-        constructor(public context: RequestContext) {}
-        
+        constructor(public context: RequestContext) { }
+
         getRequestId(): string {
           return this.context.requestId;
         }
@@ -165,17 +165,56 @@ describe('Request Scope', () => {
       const container = Container.getInstance();
       container.register(RequestContext, { scope: 'request' });
       container.register(RequestLogger, { scope: 'request' });
-      
+
       // Store design:paramtypes metadata manually for constructor injection
       Reflect.defineMetadata('design:paramtypes', [RequestContext], RequestLogger);
 
       await requestScopeStorage.runAsync(async () => {
         const logger = container.resolve(RequestLogger);
         const context = container.resolve(RequestContext);
-        
+
         // Should use the same request context
         expect(logger.getRequestId()).toBe(context.requestId);
       });
+    });
+
+    it('should proxy request-scoped dependencies injected into singleton providers', async () => {
+      class RequestContext {
+        readonly requestId = Math.random().toString(36);
+      }
+
+      class RequestAwareService {
+        constructor(public context: RequestContext) { }
+
+        getRequestId(): string {
+          return this.context.requestId;
+        }
+      }
+
+      const container = Container.getInstance();
+      container.register(RequestContext, { scope: 'request' });
+      container.register(RequestAwareService, { scope: 'singleton' });
+      Reflect.defineMetadata('design:paramtypes', [RequestContext], RequestAwareService);
+
+      const service = container.resolve(RequestAwareService);
+      expect(() => service.getRequestId()).toThrow(
+        'Cannot access request-scoped provider'
+      );
+
+      let firstRequestId = '';
+      let secondRequestId = '';
+
+      await requestScopeStorage.runAsync(async () => {
+        firstRequestId = service.getRequestId();
+        expect(firstRequestId).toBe(container.resolve(RequestContext).requestId);
+      });
+
+      await requestScopeStorage.runAsync(async () => {
+        secondRequestId = service.getRequestId();
+        expect(secondRequestId).toBe(container.resolve(RequestContext).requestId);
+      });
+
+      expect(firstRequestId).not.toBe(secondRequestId);
     });
 
     it('should clean up request-scoped instances after request ends', async () => {

@@ -7,6 +7,19 @@ import { registry } from '../registry.js';
 import { isAbstractClass } from './abstract-class.utils.js';
 import { requestScopeStorage } from './request-scope.js';
 
+interface ProviderEntry {
+  scope: ProviderScope;
+  provider?: ProviderDefinition;
+}
+
+interface AbstractImplementationRegistry {
+  getImplementations(abstractClass: Constructor): Array<{
+    implementation: Constructor;
+    isPrimary: boolean;
+    name?: string;
+  }>;
+}
+
 /**
  * Dependency Injection Container
  * 
@@ -21,20 +34,21 @@ import { requestScopeStorage } from './request-scope.js';
  */
 export class Container {
   private static instance: Container;
-  
+
   /** Stores singleton instances by token */
   private singletons = new Map<Token, unknown>();
-  
+
   /** Stores provider registrations */
-  private providers = new Map<Token, { 
-    scope: ProviderScope;
-    provider?: ProviderDefinition;
-  }>();
-  
+  private providers = new Map<Token, ProviderEntry>();
+
   /** Resolution stack for circular dependency detection */
   private resolutionStack = new Set<Token>();
 
-  private constructor() {}
+  private registryRef: AbstractImplementationRegistry;
+
+  private constructor(registryRef: AbstractImplementationRegistry = registry) {
+    this.registryRef = registryRef;
+  }
 
   /**
    * Get the global container instance
@@ -50,7 +64,41 @@ export class Container {
    * Reset the container (useful for testing)
    */
   static reset(): void {
-    Container.instance = new Container();
+    if (!Container.instance) {
+      Container.instance = new Container();
+      return;
+    }
+
+    Container.instance.clear();
+    Container.instance.registryRef = registry;
+  }
+
+  /**
+   * Clear all registrations and caches while preserving the exported singleton reference.
+   */
+  clear(): void {
+    this.singletons.clear();
+    this.providers.clear();
+    this.resolutionStack.clear();
+  }
+
+  /**
+   * Create an isolated copy of the container for a single application instance.
+   * Registration metadata is copied, while lazily-created singleton class instances are not.
+   */
+  clone(registryRef: AbstractImplementationRegistry = this.registryRef): Container {
+    const cloned = new Container(registryRef);
+
+    for (const [token, entry] of this.providers.entries()) {
+      cloned.providers.set(token, { scope: entry.scope, provider: entry.provider });
+
+      if (entry.provider && 'useValue' in entry.provider) {
+        const value = this.singletons.get(token) ?? entry.provider.useValue;
+        cloned.singletons.set(token, value);
+      }
+    }
+
+    return cloned;
   }
 
   /**
@@ -111,6 +159,50 @@ export class Container {
   }
 
   /**
+   * Get the effective scope for a token.
+   * Abstract class tokens resolve to the scope of their selected implementation.
+   */
+  getProviderScope(token: Token, name?: string): ProviderScope | undefined {
+    if (name && typeof token === 'function') {
+      const namedImplementation = this.resolveAbstractClass(token as Constructor, name);
+      if (namedImplementation) {
+        return this.getProviderScope(namedImplementation);
+      }
+    }
+
+    const config = this.providers.get(token);
+    if (config) {
+      return config.scope;
+    }
+
+    if (typeof token === 'function') {
+      const implementation = this.resolveAbstractClass(token as Constructor);
+      if (implementation && implementation !== token) {
+        return this.getProviderScope(implementation);
+      }
+
+      if (!isAbstractClass(token as Constructor)) {
+        return 'singleton';
+      }
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Check whether this container has any request-scoped providers registered.
+   */
+  hasRequestScopedProviders(): boolean {
+    for (const provider of this.providers.values()) {
+      if (provider.scope === 'request') {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
    * Resolve a dependency by token
    */
   resolve<T>(token: Token<T>): T {
@@ -143,28 +235,33 @@ export class Container {
 
     // Get provider configuration
     const config = this.providers.get(token);
-    
+
     if (!config) {
       // Token not registered - check if it's an abstract class with implementations
       if (typeof token === 'function') {
         const implementation = this.resolveAbstractClass(token as Constructor);
         if (implementation) {
           const instance = this.resolveClass(implementation);
-          // Cache under the abstract class token
-          this.singletons.set(token, instance);
+          const implementationScope = this.getProviderScope(implementation);
+
+          // Only cache the abstract token when the resolved implementation is singleton-scoped
+          if (implementationScope === 'singleton' || implementationScope === undefined) {
+            this.singletons.set(token, instance);
+          }
+
           return instance;
         }
-        
+
         // Not abstract, try to resolve as regular class (auto-registration)
         if (!isAbstractClass(token as Constructor)) {
           return this.resolveClass(token as Constructor);
         }
       }
-      
+
       if (optional) {
         return undefined;
       }
-      
+
       throw new Error(`No provider found for token: ${this.getTokenName(token)}`);
     }
 
@@ -203,8 +300,8 @@ export class Container {
     }
 
     // Get implementations from Registry (which only stores metadata)
-    const implementations = registry.getImplementations(abstractClass);
-    
+    const implementations = this.registryRef.getImplementations(abstractClass);
+
     if (!implementations || implementations.length === 0) {
       return undefined;
     }
@@ -256,28 +353,28 @@ export class Container {
 
     if ('useFactory' in provider) {
       const factoryProvider = provider as FactoryProvider;
-      
+
       // Resolve factory dependencies
       const deps = (factoryProvider.inject ?? []).map(dep => this.resolve(dep));
       const result = factoryProvider.useFactory(...deps);
-      
+
       // Cache singleton
       if (scope === 'singleton') {
         this.singletons.set(token, result);
       }
-      
+
       return result;
     }
 
     if ('useClass' in provider) {
       const classProvider = provider as ClassProvider;
       const instance = this.resolveClass(classProvider.useClass);
-      
+
       // Cache under the token (not the class)
       if (scope === 'singleton') {
         this.singletons.set(token, instance);
       }
-      
+
       return instance;
     }
 
@@ -318,7 +415,7 @@ export class Container {
           `Request-scoped providers can only be resolved during HTTP request handling.`
         );
       }
-      
+
       // Check if instance already exists in current request
       const existingInstance = requestScopeStorage.get(target);
       if (existingInstance !== undefined) {
@@ -331,16 +428,16 @@ export class Container {
 
     try {
       // Get @Autowired() metadata for constructor parameters
-      const injectMeta: AutowiredMetadata[] = 
+      const injectMeta: AutowiredMetadata[] =
         Reflect.getMetadata(INJECT_METADATA, target) ?? [];
-      
+
       // Get constructor parameter types via reflect-metadata
-      const paramTypes: Constructor[] = 
+      const paramTypes: Constructor[] =
         Reflect.getMetadata('design:paramtypes', target) ?? [];
 
       // Determine the number of parameters to resolve
       // Use the maximum of paramTypes length and highest index in injectMeta
-      const maxIndex = injectMeta.length > 0 
+      const maxIndex = injectMeta.length > 0
         ? Math.max(...injectMeta.map(m => m.index ?? -1))
         : -1;
       const paramCount = Math.max(paramTypes.length, maxIndex + 1);
@@ -353,7 +450,7 @@ export class Container {
         const token = injectOverride?.token ?? paramType;
         const isOptional = injectOverride?.optional ?? false;
         const name = injectOverride?.name;
-        
+
         // If we have no token and no paramType, skip or error
         if (!token) {
           if (isOptional) {
@@ -365,7 +462,7 @@ export class Container {
             `Use @Autowired(token) decorator.`
           );
         }
-        
+
         // Handle primitive types without override
         if (!injectOverride && this.isPrimitive(paramType)) {
           if (isOptional) {
@@ -377,11 +474,9 @@ export class Container {
             `Use @Autowired(token) decorator.`
           );
         }
-        
+
         dependencies.push(
-          isOptional 
-            ? this.resolveWithNameOptional(token, name)
-            : this.resolveWithName(token, name)
+          this.resolveInjectedDependency(token, name, isOptional, scope)
         );
       }
 
@@ -411,19 +506,22 @@ export class Container {
    * Inject properties marked with @Autowired()
    */
   private injectProperties(target: Constructor, instance: unknown): void {
-    const autowireMeta: AutowiredMetadata[] = 
+    const autowireMeta: AutowiredMetadata[] =
       Reflect.getMetadata(AUTOWIRED_METADATA, target) ?? [];
-    
+
     for (const meta of autowireMeta) {
       if (!meta.propertyKey) continue;
-      
+
       const isOptional = meta.optional ?? false;
-      
+
       try {
-        const value = isOptional 
-          ? this.resolveWithNameOptional(meta.token, meta.name)
-          : this.resolveWithName(meta.token, meta.name);
-        
+        const value = this.resolveInjectedDependency(
+          meta.token,
+          meta.name,
+          isOptional,
+          this.providers.get(target)?.scope ?? 'singleton'
+        );
+
         (instance as Record<string, unknown>)[meta.propertyKey] = value;
       } catch (error) {
         if (!isOptional) {
@@ -445,7 +543,7 @@ export class Container {
       }
       throw new Error(`No implementation named '${name}' found for ${this.getTokenName(token)}`);
     }
-    
+
     return this.resolve(token);
   }
 
@@ -461,11 +559,101 @@ export class Container {
   }
 
   /**
+   * Resolve an injected dependency while preserving request-scope semantics.
+   * Request-scoped providers injected into longer-lived components are proxied lazily.
+   */
+  private resolveInjectedDependency<T>(
+    token: Token<T>,
+    name: string | undefined,
+    optional: boolean,
+    parentScope: ProviderScope
+  ): T | undefined {
+    const dependencyScope = this.getProviderScope(token, name);
+
+    if (dependencyScope === 'request' && parentScope !== 'request') {
+      return this.createRequestScopedProxy(token, name);
+    }
+
+    return optional
+      ? this.resolveWithNameOptional(token, name)
+      : this.resolveWithName(token, name);
+  }
+
+  /**
+   * Create a lazy proxy for a request-scoped dependency.
+   * The actual instance is resolved from the current request scope on each access.
+   */
+  private createRequestScopedProxy<T>(token: Token<T>, name?: string): T {
+    const proxyTarget = this.createRequestScopedProxyTarget(token, name);
+
+    const resolveCurrentInstance = (): T => {
+      if (!requestScopeStorage.isInRequestScope()) {
+        throw new Error(
+          `Cannot access request-scoped provider '${this.getTokenName(token)}' outside of a request context. ` +
+          `Use it only during HTTP request handling.`
+        );
+      }
+
+      return name
+        ? this.resolveWithName(token, name)
+        : this.resolve(token);
+    };
+
+    return new Proxy(proxyTarget, {
+      get: (_target, property) => {
+        const instance = resolveCurrentInstance() as Record<PropertyKey, unknown>;
+        const value = Reflect.get(instance, property, instance);
+        return typeof value === 'function'
+          ? (value as Function).bind(instance)
+          : value;
+      },
+      set: (_target, property, value) => {
+        const instance = resolveCurrentInstance() as Record<PropertyKey, unknown>;
+        return Reflect.set(instance, property, value, instance);
+      },
+      has: (_target, property) => {
+        const instance = resolveCurrentInstance() as Record<PropertyKey, unknown>;
+        return Reflect.has(instance, property);
+      },
+      ownKeys: () => {
+        const instance = resolveCurrentInstance() as Record<PropertyKey, unknown>;
+        return Reflect.ownKeys(instance);
+      },
+      getOwnPropertyDescriptor: (_target, property) => {
+        const instance = resolveCurrentInstance() as Record<PropertyKey, unknown>;
+        const descriptor = Reflect.getOwnPropertyDescriptor(instance, property);
+        if (!descriptor) {
+          return undefined;
+        }
+
+        return {
+          ...descriptor,
+          configurable: true,
+        };
+      },
+    }) as T;
+  }
+
+  /**
+   * Build a proxy target that preserves the original prototype chain.
+   */
+  private createRequestScopedProxyTarget(token: Token, name?: string): object {
+    if (typeof token !== 'function') {
+      return {};
+    }
+
+    const implementation = name
+      ? this.resolveAbstractClass(token as Constructor, name)
+      : this.resolveAbstractClass(token as Constructor);
+    const prototypeSource = implementation ?? token;
+    return Object.create((prototypeSource as Constructor).prototype);
+  }
+
+  /**
    * Register an existing instance as a singleton
    */
   registerInstance<T>(target: Constructor<T>, instance: T): void {
-    this.providers.set(target, { scope: 'singleton' });
-    this.singletons.set(target, instance);
+    this.registerProvider({ provide: target, useValue: instance });
   }
 
   /**

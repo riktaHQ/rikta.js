@@ -31,7 +31,7 @@ Understanding the application lifecycle is crucial for:
 │  3. Providers registered                                    │
 │           │                                                 │
 │           ▼                                                 │
-│  4. OnProviderInit hooks called                             │
+│  4. OnProviderInit hooks called (singleton providers only)  │
 │           │                                                 │
 │           ▼                                                 │
 │  5. Routes registered                                       │
@@ -61,7 +61,7 @@ Understanding the application lifecycle is crucial for:
 
 ### OnProviderInit
 
-Implement this interface to run code when the provider is instantiated and dependencies are injected:
+Implement this interface to run code when a singleton provider is instantiated and dependencies are injected:
 
 ```typescript
 import { Injectable, OnProviderInit } from '@riktajs/core';
@@ -77,6 +77,13 @@ export class DatabaseService implements OnProviderInit {
   }
 }
 ```
+
+:::warning Request Scope and Lifecycle Hooks
+Lifecycle hooks only run for singleton providers. If a singleton injects a
+request-scoped dependency, do not access that dependency from the constructor,
+`onProviderInit()`, or `onApplicationBootstrap()`. The lazy proxy becomes valid
+only during HTTP request handling.
+:::
 
 ### OnApplicationListen
 

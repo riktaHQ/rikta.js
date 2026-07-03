@@ -34,7 +34,7 @@ Marks a class as injectable in the DI container.
 ```
 
 **Options:**
-- `scope`: `'singleton'` | `'transient'` (default: `'singleton'`)
+- `scope`: `'singleton'` | `'transient'` | `'request'` (default: `'singleton'`)
 
 **Example:**
 ```typescript
@@ -43,7 +43,14 @@ export class UserService {}
 
 @Injectable({ scope: 'transient' })
 export class RequestService {}
+
+@Injectable({ scope: 'request' })
+export class RequestContext {}
 ```
+
+Request-scoped dependencies can be injected into singleton components through a
+lazy proxy. Access them only during HTTP request handling, not from
+constructors or bootstrap lifecycle hooks.
 
 ### @Autowired()
 

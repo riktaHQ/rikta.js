@@ -40,7 +40,7 @@ Middleware are functions that have access to the request and response objects an
 
 ### 1. Create a Middleware
 
-Middleware must implement the `RiktaMiddleware` interface and be decorated with `@Middleware()`:
+Middleware must implement the `RiktaMiddleware` interface and be decorated with `@Middleware()`. The decorator auto-registers the middleware as a singleton injectable:
 
 ```typescript
 import { Middleware, RiktaMiddleware, NextFunction } from '@riktajs/core';
@@ -54,6 +54,9 @@ export class LoggerMiddleware implements RiktaMiddleware {
   }
 }
 ```
+
+If you need a different scope, override it with `@Injectable({ scope: 'transient' | 'request' })`
+or register the middleware manually in the container before `Rikta.create()`.
 
 ### 2. Apply Middleware
 
