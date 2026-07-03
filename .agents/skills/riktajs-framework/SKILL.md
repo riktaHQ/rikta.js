@@ -40,7 +40,7 @@ Example:
 
 ```typescript
 const app = await Rikta.create({
-  autowired: ['./src/controllers', './src/services'],
+  autowired: ["./src/controllers", "./src/services"],
 });
 ```
 
@@ -61,7 +61,7 @@ const app = await Rikta.create({
 Good example:
 
 ```typescript
-@Injectable({ scope: 'request' })
+@Injectable({ scope: "request" })
 class RequestContext {
   readonly requestId = crypto.randomUUID();
 }
@@ -76,14 +76,14 @@ class AuditService {
   }
 }
 
-@Controller('/orders')
+@Controller("/orders")
 class OrderController {
   @Autowired()
   private audit!: AuditService;
 
   @Get()
   list() {
-    this.audit.log('Listing orders');
+    this.audit.log("Listing orders");
     return [];
   }
 }
